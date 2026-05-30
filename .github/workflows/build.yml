@@ -97,10 +97,18 @@ jobs:
           tag_name: ${{ needs.version.outputs.tag }}
           name: v${{ needs.version.outputs.version }}
           body: ${{ steps.notes.outputs.notes }}
-          files: |
-            app-debug-apk/app-debug.apk
-            app-debug-windows/windows-build.zip
+          draft: false
+          prerelease: false
           generate_release_notes: true
+
+      - name: Upload Release Assets
+        run: |
+          gh release upload ${{ needs.version.outputs.tag }} \
+            app-debug-apk/app-debug.apk \
+            app-debug-windows/windows-build.zip \
+            --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Update backend version.json
         env:
