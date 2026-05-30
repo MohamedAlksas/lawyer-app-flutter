@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,7 +18,12 @@ class UpdateService {
       final res = await _api.get('/version/latest');
       final data = res.data;
       final latestVersion = data['version'] as String;
-      final downloadUrl = data['downloadUrl'] as String? ?? '';
+
+      final isWindows = Platform.isWindows;
+      final downloadUrl = (isWindows
+              ? data['downloadUrlWindows']
+              : data['downloadUrl']) as String? ??
+          '';
 
       if (downloadUrl.isEmpty) return;
 
@@ -27,8 +33,9 @@ class UpdateService {
             context: context,
             barrierDismissible: false,
             builder: (_) => AlertDialog(
-              title: Text('Update Available'),
-              content: Text('Version $latestVersion is available.\nYou have $currentVersion.\n\n${data['releaseNotes'] ?? ''}'),
+              title: const Text('Update Available'),
+              content: Text(
+                  'Version $latestVersion is available.\nYou have $currentVersion.\n\n${data['releaseNotes'] ?? ''}'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
