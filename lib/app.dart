@@ -19,6 +19,7 @@ import 'screens/users/users_screen.dart';
 import 'widgets/responsive_layout.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/forms/case_form.dart';
+import 'utils/theme.dart';
 
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
@@ -65,6 +66,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
 
     if (!auth.isInitialized) {
       return MaterialApp(
+        theme: AppTheme.light,
         locale: locale,
         localizationsDelegates: const [
           S.delegate,
@@ -80,6 +82,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
     return MaterialApp.router(
       title: 'Law Office',
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
       locale: locale,
       localizationsDelegates: const [
         S.delegate,
@@ -170,6 +173,7 @@ class _AppShell extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
     final isMobile = ResponsiveLayout.isMobile(context);
     final location = GoRouterState.of(context).matchedLocation;
+    final cs = Theme.of(context).colorScheme;
 
     final navItems = [
       _NavItem(Icons.dashboard, s.dashboard, '/dashboard'),
@@ -191,6 +195,7 @@ class _AppShell extends ConsumerWidget {
               onDestinationSelected: (i) => context.go(navItems[i].path),
               destinations: navItems.map((n) => NavigationDestination(
                 icon: Icon(n.icon),
+                selectedIcon: Icon(n.icon, color: cs.primary),
                 label: n.label,
               )).toList(),
             ),
@@ -201,25 +206,37 @@ class _AppShell extends ConsumerWidget {
                 NavigationRail(
                   selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
                   onDestinationSelected: (i) => context.go(navItems[i].path),
-                  labelType: NavigationRailLabelType.all,
                   leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Icon(Icons.balance, size: 36, color: Theme.of(context).colorScheme.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.balance, size: 28, color: cs.primary),
+                        const SizedBox(width: 8),
+                        Text('Law Office', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.logout),
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
+                  trailing: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: IconButton(
+                      icon: Icon(Icons.logout, color: cs.onSurfaceVariant),
+                      tooltip: s.logout,
+                      onPressed: () => ref.read(authProvider.notifier).logout(),
+                    ),
                   ),
                   destinations: navItems.map((n) => NavigationRailDestination(
                     icon: Icon(n.icon),
+                    selectedIcon: Icon(n.icon, color: cs.primary),
                     label: Text(n.label),
                   )).toList(),
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: child,
-                )),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: child,
+                  ),
+                ),
               ],
             ),
           );
