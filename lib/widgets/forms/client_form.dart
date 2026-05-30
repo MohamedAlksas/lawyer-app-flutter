@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../models/client.dart';
 import '../../providers/api_provider.dart';
+import '../../providers/clients_provider.dart';
 
 class ClientForm extends ConsumerStatefulWidget {
   final Client? client;
@@ -71,7 +72,10 @@ class _ClientFormState extends ConsumerState<ClientForm> {
       } else {
         await api.post('/clients', data: data);
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ref.read(clientsProvider.notifier).refresh();
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
