@@ -5,6 +5,7 @@ import '../../models/case.dart';
 import '../../models/user.dart';
 import '../../providers/api_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cases_provider.dart';
 
 class CaseForm extends ConsumerStatefulWidget {
   final Case? caseModel;
@@ -118,7 +119,10 @@ class _CaseFormState extends ConsumerState<CaseForm> {
       } else {
         await api.post('/cases', data: data);
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ref.read(casesProvider.notifier).refresh();
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
