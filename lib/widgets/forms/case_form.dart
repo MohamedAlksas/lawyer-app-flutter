@@ -4,6 +4,7 @@ import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../models/case.dart';
 import '../../models/user.dart';
 import '../../providers/api_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class CaseForm extends ConsumerStatefulWidget {
   final Case? caseModel;
@@ -75,6 +76,10 @@ class _CaseFormState extends ConsumerState<CaseForm> {
       _clients = ((cRes.data['data'] ?? []) as List).cast<Map<String, dynamic>>();
       final uRes = await api.get('/users');
       _lawyers = (uRes.data as List).map((e) => User.fromMap(e)).toList();
+      if (_assignedLawyerId.isEmpty && widget.caseModel == null) {
+        final currentUser = ref.read(authProvider).user;
+        if (currentUser != null) _assignedLawyerId = currentUser.id;
+      }
     } catch (_) {}
     setState(() => _loadingClients = false);
   }
@@ -83,6 +88,10 @@ class _CaseFormState extends ConsumerState<CaseForm> {
     if (!_formKey.currentState!.validate()) return;
     if (_clientId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a client')));
+      return;
+    }
+    if (_assignedLawyerId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a lawyer')));
       return;
     }
     setState(() => _submitting = true);
