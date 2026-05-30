@@ -1,0 +1,81 @@
+name: Build Flutter Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.1)'
+        required: false
+      buildNumber:
+        description: 'Build number'
+        required: false
+        default: '1'
+  release:
+    types: [published]
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build windows --debug
+      - run: Compress-Archive -Path build\windows\runner\debug\* -DestinationPath windows-build.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-windows
+          path: windows-build.zip
+
+  release:
+    name: Create Release
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    needs: [build-apk, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-debug-windows
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          files: |
+            app-debug.apk
+            windows/**
