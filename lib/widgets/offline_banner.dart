@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
@@ -12,16 +13,23 @@ class OfflineBanner extends StatefulWidget {
 
 class _OfflineBannerState extends State<OfflineBanner> {
   bool _isOffline = false;
+  StreamSubscription? _subscription;
 
   @override
   void initState() {
     super.initState();
-    Connectivity().onConnectivityChanged.listen((results) {
+    _subscription = Connectivity().onConnectivityChanged.listen((results) {
       final offline = results.contains(ConnectivityResult.none);
       if (mounted && offline != _isOffline) {
         setState(() => _isOffline = offline);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   @override

@@ -32,7 +32,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 5, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -278,8 +278,8 @@ class _DocumentsTab extends ConsumerWidget {
                     final d = documents[i];
                     return ListTile(
                       leading: const Icon(Icons.description),
-                      title: Text(d.fileName),
-                      subtitle: Text(d.category),
+                      title: Text(d.name),
+                      subtitle: Text(d.docCategory),
                       trailing: IconButton(
                         icon: const Icon(Icons.open_in_new),
                         onPressed: () => _openDoc(context, d.fileUrl),
@@ -358,7 +358,7 @@ class _ActionsTab extends StatelessWidget {
       itemBuilder: (_, i) {
         final a = actions[i];
         return ListTile(
-          title: Text(a['action'] ?? ''),
+          title: Text(a['actionType'] ?? ''),
           subtitle: Text(a['createdAt']?.toString() ?? ''),
         );
       },
