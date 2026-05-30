@@ -233,7 +233,7 @@ class _AppShell extends ConsumerWidget {
                 const VerticalDivider(width: 1),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                     child: child,
                   ),
                 ),
