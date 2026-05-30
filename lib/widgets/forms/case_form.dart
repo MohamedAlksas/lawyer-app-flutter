@@ -120,8 +120,8 @@ class _CaseFormState extends ConsumerState<CaseForm> {
         await api.post('/cases', data: data);
       }
       if (mounted) {
-        ref.read(casesProvider.notifier).refresh();
-        Navigator.pop(context);
+        await ref.read(casesProvider.notifier).refresh();
+        if (mounted) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {

@@ -85,11 +85,16 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
           ),
         ),
         const SizedBox(height: 8),
+        if (state.error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(state.error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
+          ),
         Expanded(
           child: state.isLoading && state.cases.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : state.cases.isEmpty
-                  ? Center(child: Text(s.noData))
+                  ? Center(child: Text(state.error ?? s.noData))
                   : ListView.separated(
                       itemCount: state.cases.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
