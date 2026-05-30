@@ -33,17 +33,15 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final state = ref.watch(casesProvider);
-    final cs = Theme.of(context).colorScheme;
-    final filter = _statusFilter ?? 'ALL';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Expanded(child: Text(s.cases, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600))),
+            Expanded(child: Text(s.cases, style: Theme.of(context).textTheme.headlineSmall)),
             FilledButton.icon(
-              icon: const Icon(Icons.add, size: 18),
+              icon: const Icon(Icons.add),
               label: Text(s.add),
               onPressed: () => context.go('/cases/add'),
             ),
@@ -55,6 +53,7 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
             hintText: s.search,
+            border: const OutlineInputBorder(),
             suffixIcon: _searchCtrl.text.isNotEmpty
                 ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
                     _searchCtrl.clear();
@@ -70,16 +69,15 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: _statuses.map((st) {
-              final active = filter == st;
+              final active = (_statusFilter ?? 'ALL') == st;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
-                  label: Text(st == 'ALL' ? s.all : st),
+                  label: Text(s.status == st ? st : st),
                   selected: active,
                   onSelected: (_) {
-                    final next = active ? 'ALL' : st;
-                    setState(() => _statusFilter = next);
-                    ref.read(casesProvider.notifier).filterByStatus(next);
+                    setState(() => _statusFilter = active ? 'ALL' : st);
+                    ref.read(casesProvider.notifier).filterByStatus(_statusFilter);
                   },
                 ),
               );
@@ -90,42 +88,21 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
         if (state.error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(color: cs.errorContainer, borderRadius: BorderRadius.circular(8)),
-              child: Text(state.error!, style: TextStyle(color: cs.onErrorContainer, fontSize: 13)),
-            ),
+            child: Text(state.error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
           ),
         Expanded(
           child: state.isLoading && state.cases.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : state.cases.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.folder_outlined, size: 48, color: cs.outlineVariant),
-                          const SizedBox(height: 12),
-                          Text(state.error ?? s.noData, style: TextStyle(color: cs.onSurfaceVariant)),
-                        ],
-                      ),
-                    )
+                  ? Center(child: Text(state.error ?? s.noData))
                   : ListView.separated(
                       itemCount: state.cases.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                      separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (_, i) {
                         final c = state.cases[i];
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: c.status == 'ACTIVE' ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
-                            child: Icon(
-                              c.status == 'ACTIVE' ? Icons.gavel : Icons.folder_off_outlined,
-                              color: c.status == 'ACTIVE' ? Colors.green : Colors.grey,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text('${s.caseNumber}: ${c.caseNumber} / ${c.caseYear}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                          subtitle: Text('${c.courtName} | ${c.caseType}', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                          title: Text('${s.caseNumber}: ${c.caseNumber} / ${c.caseYear}'),
+                          subtitle: Text('${c.courtName} | ${c.caseType}'),
                           trailing: _StatusBadge(c.status),
                           onTap: () => context.go('/cases/${c.id}'),
                         );
@@ -144,7 +121,6 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final cs = Theme.of(context).colorScheme;
     Color color;
     String label;
     switch (status) {
@@ -161,14 +137,9 @@ class _StatusBadge extends StatelessWidget {
         label = s.suspended;
         break;
       default:
-        color = cs.outlineVariant;
+        color = Colors.blueGrey;
         label = status;
     }
-    return Chip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-      backgroundColor: color.withValues(alpha: 0.1),
-      visualDensity: VisualDensity.compact,
-      side: BorderSide.none,
-    );
+    return Chip(label: Text(label, style: TextStyle(fontSize: 12, color: color)), backgroundColor: color.withValues(alpha: 0.1), visualDensity: VisualDensity.compact);
   }
 }
