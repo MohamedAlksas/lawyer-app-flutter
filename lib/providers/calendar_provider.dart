@@ -43,7 +43,7 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
     state = state.copyWith(isLoading: true, year: year, month: month);
     try {
       final res = await _api.get('/sessions/calendar', query: {'year': year, 'month': month});
-      final items = (res.data['sessions'] as List).map((e) => Session.fromMap(e)).toList();
+      final items = (res.data as List?)?.map((e) => Session.fromMap(e)).toList() ?? [];
       state = state.copyWith(sessions: items, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

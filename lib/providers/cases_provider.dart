@@ -57,7 +57,7 @@ class CasesNotifier extends StateNotifier<CasesState> {
       if (sq.isNotEmpty) params['search'] = sq;
       if (sf != null && sf != 'ALL') params['status'] = sf;
       final res = await _api.get('/cases', query: params);
-      final items = (res.data['cases'] as List).map((e) => Case.fromMap(e)).toList();
+      final items = (res.data['data'] as List).map((e) => Case.fromMap(e)).toList();
       state = state.copyWith(
         cases: refresh ? items : [...state.cases, ...items],
         totalCount: res.data['total'] ?? items.length,

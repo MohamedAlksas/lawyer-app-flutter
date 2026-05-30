@@ -26,7 +26,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       final res = await api.get('/users');
-      final items = (res.data['users'] as List).map((e) => User.fromMap(e)).toList();
+      final items = (res.data as List).map((e) => User.fromMap(e)).toList();
       setState(() => _users = items);
     } catch (_) {}
     setState(() => _loading = false);

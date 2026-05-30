@@ -48,7 +48,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
       final api = ref.read(apiServiceProvider);
       final res = await api.get('/cases/${widget.caseId}');
       final d = res.data;
-      _case = Case.fromMap(d['case']);
+      _case = Case.fromMap(d);
       _sessions = (d['sessions'] as List?)?.map((e) => Session.fromMap(e)).toList() ?? [];
       _payments = (d['payments'] as List?)?.map((e) => Payment.fromMap(e)).toList() ?? [];
       _documents = (d['documents'] as List?)?.map((e) => Document.fromMap(e)).toList() ?? [];

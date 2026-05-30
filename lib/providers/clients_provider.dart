@@ -52,7 +52,7 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
         params['search'] = query ?? state.searchQuery;
       }
       final res = await _api.get('/clients', query: params);
-      final items = (res.data['clients'] as List).map((e) => Client.fromMap(e)).toList();
+      final items = (res.data['data'] as List).map((e) => Client.fromMap(e)).toList();
       state = state.copyWith(
         clients: refresh ? items : [...state.clients, ...items],
         totalCount: res.data['total'] ?? items.length,

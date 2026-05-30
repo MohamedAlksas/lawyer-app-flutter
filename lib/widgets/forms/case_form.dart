@@ -72,9 +72,9 @@ class _CaseFormState extends ConsumerState<CaseForm> {
     try {
       final api = ref.read(apiServiceProvider);
       final cRes = await api.get('/clients', query: {'limit': 100});
-      _clients = (cRes.data['clients'] as List).cast<Map<String, dynamic>>();
+      _clients = ((cRes.data['data'] ?? []) as List).cast<Map<String, dynamic>>();
       final uRes = await api.get('/users');
-      _lawyers = (uRes.data['users'] as List).map((e) => User.fromMap(e)).toList();
+      _lawyers = (uRes.data as List).map((e) => User.fromMap(e)).toList();
     } catch (_) {}
     setState(() => _loadingClients = false);
   }

@@ -39,10 +39,9 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     state = state.copyWith(isLoading: true);
     try {
       final res = await _api.get('/notifications');
-      final items = (res.data['notifications'] as List)
-          .map((e) => NotificationModel.fromMap(e))
-          .toList();
-      final unread = res.data['unreadCount'] ?? items.where((n) => !n.isRead).length;
+      final rawList = (res.data['data'] ?? res.data['notifications'] ?? []) as List;
+      final items = rawList.map((e) => NotificationModel.fromMap(e)).toList();
+      final unread = (res.data['unreadCount'] ?? items.where((n) => !n.isRead).length) as int;
       state = NotificationsState(notifications: items, unreadCount: unread);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
