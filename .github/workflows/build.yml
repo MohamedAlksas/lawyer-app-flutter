@@ -113,8 +113,11 @@ jobs:
       - name: Update backend version.json
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
-        if: secrets.GH_PAT != ''
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "No GH_TOKEN, skipping version update"
+            exit 0
+          fi
           VERSION="${{ needs.version.outputs.version }}"
           BUILD="${{ needs.version.outputs.build }}"
           TAG="${{ needs.version.outputs.tag }}"
@@ -145,8 +148,11 @@ jobs:
       - name: Trigger Render Deploy
         env:
           RENDER_KEY: ${{ secrets.RENDER_API_KEY }}
-        if: secrets.RENDER_API_KEY != ''
         run: |
+          if [ -z "$RENDER_KEY" ]; then
+            echo "No RENDER_KEY, skipping Render deploy"
+            exit 0
+          fi
           curl -X POST "https://api.render.com/v1/services/srv-d8d339ojs32c73f4qjd0/deploys" \
             -H "Authorization: Bearer $RENDER_KEY" \
             -H "Content-Type: application/json" \
