@@ -53,7 +53,15 @@ jobs:
           flutter build windows --debug
           --build-name=${{ needs.version.outputs.version }}
           --build-number=${{ needs.version.outputs.build }}
-      - run: Compress-Archive -Path build\windows\runner\Debug\* -DestinationPath windows-build.zip
+      - run: |
+          if (Test-Path "build\windows\x64\runner\Debug") {
+            Compress-Archive -Path "build\windows\x64\runner\Debug\*" -DestinationPath windows-build.zip
+          } elseif (Test-Path "build\windows\runner\Debug") {
+            Compress-Archive -Path "build\windows\runner\Debug\*" -DestinationPath windows-build.zip
+          } else {
+            Get-ChildItem -Path "build\windows" -Recurse -Depth 3 | Select-Object -First 50 FullName
+            throw "Could not find Windows build output"
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-windows
