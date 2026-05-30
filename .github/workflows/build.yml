@@ -31,8 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 'stable'
       - run: flutter pub get
       - run: >
           flutter build apk --debug
@@ -50,8 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 'stable'
       - run: flutter pub get
       - run: >
           flutter build windows --debug
