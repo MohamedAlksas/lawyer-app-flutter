@@ -114,12 +114,18 @@ class _ClientFormState extends ConsumerState<ClientForm> {
                 TextFormField(
                   controller: _nationalCtrl,
                   decoration: InputDecoration(labelText: s.nationalId, border: const OutlineInputBorder()),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return s.nationalId;
+                    if (v.trim().length != 14) return s.nationalId;
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _phoneCtrl,
                   decoration: InputDecoration(labelText: s.phone, border: const OutlineInputBorder()),
                   keyboardType: TextInputType.phone,
+                  validator: (v) => v == null || v.trim().isEmpty ? s.phone : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

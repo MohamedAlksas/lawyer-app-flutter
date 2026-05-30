@@ -80,7 +80,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : _selectedDay == null
-                  ? Center(child: Text(s.selectFile))
+                  ? Center(child: Text(Directionality.of(context) == TextDirection.rtl ? 'الرجاء اختيار يوم لعرض الجلسات' : 'Please select a day to view sessions'))
                   : Builder(
                       builder: (_) {
                         final daySessions = state.sessions.where((s) {

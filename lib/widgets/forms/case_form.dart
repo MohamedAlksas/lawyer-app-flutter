@@ -163,11 +163,14 @@ class _CaseFormState extends ConsumerState<CaseForm> {
                 TextFormField(
                   controller: _caseYearCtrl,
                   decoration: InputDecoration(labelText: s.caseYear, border: const OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v == null || v.trim().isEmpty ? s.caseYear : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _courtNameCtrl,
                   decoration: InputDecoration(labelText: s.courtName, border: const OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? s.courtName : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

@@ -101,7 +101,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         return ListTile(
                           title: Text(c.fullName),
                           subtitle: Text(c.phone ?? c.nationalId ?? ''),
-                          trailing: const Icon(Icons.chevron_left),
+                          trailing: Icon(Directionality.of(context) == TextDirection.rtl ? Icons.chevron_left : Icons.chevron_right),
                           onTap: () => _showClientDetail(c),
                         );
                       },

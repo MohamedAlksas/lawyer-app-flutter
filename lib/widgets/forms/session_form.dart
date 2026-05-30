@@ -56,9 +56,14 @@ class _SessionFormState extends ConsumerState<SessionForm> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _result,
-                  items: ['WON', 'LOST', 'POSTPONED', 'JUDGMENT_ISSUED', 'APPEAL_FILED', '']
-                      .map((r) => DropdownMenuItem(value: r.isEmpty ? null : r, child: Text(r.isEmpty ? '-' : r)))
-                      .toList(),
+                  items: [
+                    DropdownMenuItem(value: null, child: Text('-')),
+                    DropdownMenuItem(value: 'POSTPONED', child: Text(s.postponed)),
+                    DropdownMenuItem(value: 'MEMORANDUM', child: Text(s.memorandum)),
+                    DropdownMenuItem(value: 'JUDGMENT', child: Text(s.judgment)),
+                    DropdownMenuItem(value: 'APPEAL', child: Text(s.appeal)),
+                    DropdownMenuItem(value: 'OTHER', child: Text(s.other)),
+                  ],
                   onChanged: (v) => setState(() => _result = v),
                   decoration: InputDecoration(labelText: s.result, border: const OutlineInputBorder()),
                 ),

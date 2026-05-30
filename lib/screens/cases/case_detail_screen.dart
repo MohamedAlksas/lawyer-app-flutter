@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../models/case.dart';
 import '../../models/session.dart';
@@ -307,40 +309,81 @@ class _UploadDocDialog extends StatefulWidget {
 }
 
 class _UploadDocDialogState extends State<_UploadDocDialog> {
-  String? _filePath;
+  File? _selectedFile;
   String _category = 'OTHER';
+  bool _uploading = false;
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+    );
+    if (result != null && result.files.single.path != null) {
+      setState(() => _selectedFile = File(result.files.single.path!));
+    }
+  }
+
+  Future<void> _upload(WidgetRef ref) async {
+    if (_selectedFile == null) return;
+    setState(() => _uploading = true);
+
+    try {
+      final api = ref.read(apiServiceProvider);
+      final filename = _selectedFile!.path.split('/').last;
+      await api.uploadFile(
+        '/documents',
+        _selectedFile!,
+        caseId: widget.caseId,
+        docCategory: _category,
+        name: filename,
+      );
+      if (mounted) Navigator.pop(context, 'success');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return AlertDialog(
-      title: Text(s.uploadDocument),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            value: _category,
-            items: ['POA', 'MEMORANDUM', 'JUDGMENT', 'APPEAL', 'CONTRACT', 'OTHER']
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                .toList(),
-            onChanged: (v) => setState(() => _category = v ?? 'OTHER'),
-            decoration: InputDecoration(labelText: s.docCategory, border: const OutlineInputBorder()),
+    return Consumer(
+      builder: (context, ref, child) {
+        return AlertDialog(
+          title: Text(s.uploadDocument),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: _category,
+                items: ['POA', 'MEMORANDUM', 'JUDGMENT', 'APPEAL', 'CONTRACT', 'OTHER']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _category = v ?? 'OTHER'),
+                decoration: InputDecoration(labelText: s.docCategory, border: const OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.attach_file),
+                label: Text(_selectedFile == null ? s.selectFile : _selectedFile!.path.split('/').last),
+                onPressed: _uploading ? null : _pickFile,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            icon: const Icon(Icons.attach_file),
-            label: Text(s.selectFile),
-            onPressed: () async {
-              // file_picker integration
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File picker TBD')));
-            },
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.cancel)),
-        FilledButton(onPressed: _filePath == null ? null : () => Navigator.pop(context, 'ok'), child: Text(s.upload)),
-      ],
+          actions: [
+            TextButton(onPressed: _uploading ? null : () => Navigator.pop(context), child: Text(s.cancel)),
+            FilledButton(
+              onPressed: _selectedFile == null || _uploading ? null : () => _upload(ref),
+              child: _uploading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(s.save),
+            ),
+          ],
+        );
+      },
     );
   }
 }
