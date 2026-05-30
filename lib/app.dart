@@ -6,6 +6,7 @@ import 'i18n/messages.dart';
 import 'providers/auth_provider.dart';
 import 'providers/locale_provider.dart';
 import 'screens/auth/login_screen.dart';
+import 'services/notification_service.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/clients/clients_screen.dart';
 import 'screens/cases/cases_screen.dart';
@@ -32,6 +33,26 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(authProvider.notifier).init());
+    NotificationService().listenToMessages(
+      onMessage: (title, body, data) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$title\n$body'),
+            duration: const Duration(seconds: 4),
+          ));
+        }
+      },
+      onLaunch: (title, body, data) {
+        if (data['type'] == 'session_reminder' || data['type'] == 'limitation_alert') {
+          final caseId = data['caseId'];
+          if (caseId != null && caseId.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              context.go('/cases/$caseId');
+            });
+          }
+        }
+      },
+    );
   }
 
   @override

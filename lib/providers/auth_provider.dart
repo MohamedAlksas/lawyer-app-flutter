@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class AuthState {
   final User? user;
@@ -28,6 +29,7 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  String? _fcmToken;
 
   AuthNotifier(this._authService) : super(const AuthState());
 
@@ -36,6 +38,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (loggedIn) {
       final user = await _authService.getCurrentUser();
       state = AuthState(user: user, isInitialized: true);
+      if (user != null) _registerFcm();
     } else {
       state = const AuthState(isInitialized: true);
     }
@@ -46,6 +49,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _authService.login(email, password);
       state = AuthState(user: user, isInitialized: true);
+      _registerFcm();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: _parseError(e));
     }
@@ -53,7 +57,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authService.logout();
+    if (_fcmToken != null) {
+      await NotificationService().unregisterToken(_fcmToken);
+    }
     state = const AuthState(isInitialized: true);
+  }
+
+  Future<void> _registerFcm() async {
+    final token = await NotificationService().getToken();
+    if (token != null) {
+      _fcmToken = token;
+      await NotificationService().registerToken(token);
+    }
   }
 
   String _parseError(Object e) {
