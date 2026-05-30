@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/locale_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'services/notification_service.dart';
+import 'services/update_service.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/clients/clients_screen.dart';
 import 'screens/cases/cases_screen.dart';
@@ -31,6 +32,9 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(authProvider.notifier).init());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService().checkForUpdate(context);
+    });
     NotificationService().listenToMessages(
       onMessage: (title, body, data) {
         if (mounted) {
