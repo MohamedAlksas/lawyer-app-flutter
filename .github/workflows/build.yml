@@ -103,9 +103,10 @@ jobs:
 
       - name: Upload Release Assets
         run: |
+          ls -la
           gh release upload ${{ needs.version.outputs.tag }} \
-            app-debug-apk/app-debug.apk \
-            app-debug-windows/windows-build.zip \
+            app-debug.apk \
+            windows-build.zip \
             --clobber
         env:
           GH_TOKEN: ${{ github.token }}
