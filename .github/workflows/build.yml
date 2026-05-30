@@ -53,7 +53,7 @@ jobs:
           flutter build windows --debug
           --build-name=${{ needs.version.outputs.version }}
           --build-number=${{ needs.version.outputs.build }}
-      - run: Compress-Archive -Path build\windows\runner\debug\* -DestinationPath windows-build.zip
+      - run: Compress-Archive -Path build\windows\runner\Debug\* -DestinationPath windows-build.zip
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug-windows
@@ -68,12 +68,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
 
-      - name: Generate release notes
-        id: notes
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: |
+      - id: notes
+        run: |
           PREV_TAG=$(git tag --sort=-version:refname | head -1)
           if [ -z "$PREV_TAG" ]; then
             echo "notes=Initial release" >> $GITHUB_OUTPUT
