@@ -314,7 +314,7 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
   bool _uploading = false;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
     );
