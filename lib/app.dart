@@ -27,8 +27,6 @@ class LawyerApp extends ConsumerStatefulWidget {
 }
 
 class _LawyerAppState extends ConsumerState<LawyerApp> {
-  int _selectedIndex = 0;
-
   @override
   void initState() {
     super.initState();
@@ -58,9 +56,24 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider);
-    final isRtl = locale.languageCode == 'ar';
+    final auth = ref.watch(authProvider);
+    final router = ref.watch(routerProvider);
 
-    return MaterialApp(
+    if (!auth.isInitialized) {
+      return MaterialApp(
+        locale: locale,
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('ar'), Locale('en')],
+        home: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return MaterialApp.router(
       title: 'Law Office',
       debugShowCheckedModeBanner: false,
       locale: locale,
@@ -71,145 +84,152 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('ar'), Locale('en')],
-      builder: (context, child) {
-        final auth = ref.watch(authProvider);
-        if (!auth.isInitialized) {
-          return const Material(child: Center(child: CircularProgressIndicator()));
-        }
-        if (!auth.isAuthenticated) {
-          return const LoginScreen();
-        }
-        return Directionality(
-          textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: OfflineBanner(child: _buildShell(context, child!)),
-        );
-      },
+      routerConfig: router,
     );
-  }
-
-  Widget _buildShell(BuildContext context, Widget child) {
-    final s = S.of(context);
-    final user = ref.watch(authProvider).user;
-    final isMobile = ResponsiveLayout.isMobile(context);
-
-    if (isMobile) {
-      return Scaffold(
-        body: child,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (i) {
-            setState(() => _selectedIndex = i);
-            _navigate(i, context);
-          },
-          destinations: [
-            NavigationDestination(icon: const Icon(Icons.dashboard), label: s.dashboard),
-            NavigationDestination(icon: const Icon(Icons.people), label: s.clients),
-            NavigationDestination(icon: const Icon(Icons.gavel), label: s.cases),
-            NavigationDestination(icon: const Icon(Icons.calendar_month), label: s.calendar),
-            NavigationDestination(icon: const Icon(Icons.notifications), label: s.notifications),
-            if (user?.isAdmin == true) NavigationDestination(icon: const Icon(Icons.manage_accounts), label: s.users),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (i) {
-              setState(() => _selectedIndex = i);
-              _navigate(i, context);
-            },
-            labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Icon(Icons.balance, size: 36, color: Theme.of(context).colorScheme.primary),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () => ref.read(authProvider.notifier).logout(),
-            ),
-            destinations: [
-              NavigationRailDestination(icon: const Icon(Icons.dashboard), label: Text(s.dashboard)),
-              NavigationRailDestination(icon: const Icon(Icons.people), label: Text(s.clients)),
-              NavigationRailDestination(icon: const Icon(Icons.gavel), label: Text(s.cases)),
-              NavigationRailDestination(icon: const Icon(Icons.calendar_month), label: Text(s.calendar)),
-              NavigationRailDestination(icon: const Icon(Icons.notifications), label: Text(s.notifications)),
-              if (user?.isAdmin == true)
-                NavigationRailDestination(icon: const Icon(Icons.manage_accounts), label: Text(s.users)),
-            ],
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: child,
-          )),
-        ],
-      ),
-    );
-  }
-
-  void _navigate(int index, BuildContext context) {
-    switch (index) {
-      case 0: context.go('/dashboard');
-      case 1: context.go('/clients');
-      case 2: context.go('/cases');
-      case 3: context.go('/calendar');
-      case 4: context.go('/notifications');
-      case 5: context.go('/users');
-    }
   }
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final auth = ref.watch(authProvider);
+
   return GoRouter(
     initialLocation: '/dashboard',
+    redirect: (context, state) {
+      if (!auth.isInitialized) return null;
+      if (!auth.isAuthenticated && state.matchedLocation != '/login') return '/login';
+      if (auth.isAuthenticated && state.matchedLocation == '/login') return '/dashboard';
+      return null;
+    },
     routes: [
-      GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
-      GoRoute(path: '/clients', builder: (_, __) => const ClientsScreen()),
-      GoRoute(
-        path: '/cases',
-        builder: (_, __) => const CasesScreen(),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      ShellRoute(
+        builder: (_, __, child) => _AppShell(child: child),
         routes: [
+          GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+          GoRoute(path: '/clients', builder: (_, __) => const ClientsScreen()),
           GoRoute(
-            path: 'add',
-            builder: (_, __) => Scaffold(
-              appBar: AppBar(),
-              body: DraggableScrollableSheet(
-                initialChildSize: 0.9,
-                maxChildSize: 0.95,
-                builder: (_, ctrl) => CaseForm(scrollCtrl: ctrl),
-              ),
-            ),
-          ),
-          GoRoute(
-            path: ':id',
-            builder: (_, state) => CaseDetailScreen(caseId: state.pathParameters['id']!),
+            path: '/cases',
+            builder: (_, __) => const CasesScreen(),
             routes: [
               GoRoute(
-                path: 'edit',
-                builder: (_, state) => Scaffold(
+                path: 'add',
+                builder: (_, __) => Scaffold(
                   appBar: AppBar(),
                   body: DraggableScrollableSheet(
                     initialChildSize: 0.9,
                     maxChildSize: 0.95,
-                    builder: (_, ctrl) => CaseForm(
-                      caseModel: null, // would need to fetch
-                      scrollCtrl: ctrl,
-                    ),
+                    builder: (_, ctrl) => CaseForm(scrollCtrl: ctrl),
                   ),
                 ),
               ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) => CaseDetailScreen(caseId: state.pathParameters['id']!),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (_, state) => Scaffold(
+                      appBar: AppBar(),
+                      body: DraggableScrollableSheet(
+                        initialChildSize: 0.9,
+                        maxChildSize: 0.95,
+                        builder: (_, ctrl) => CaseForm(
+                          caseModel: null,
+                          scrollCtrl: ctrl,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
+          GoRoute(path: '/calendar', builder: (_, __) => const CalendarScreen()),
+          GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+          GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+          GoRoute(path: '/users', builder: (_, __) => const UsersScreen()),
         ],
       ),
-      GoRoute(path: '/calendar', builder: (_, __) => const CalendarScreen()),
-      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
-      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
-      GoRoute(path: '/users', builder: (_, __) => const UsersScreen()),
     ],
   );
 });
+
+class _AppShell extends ConsumerWidget {
+  final Widget child;
+  const _AppShell({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    final isRtl = locale.languageCode == 'ar';
+    final s = S.of(context);
+    final user = ref.watch(authProvider).user;
+    final isMobile = ResponsiveLayout.isMobile(context);
+    final location = GoRouterState.of(context).matchedLocation;
+
+    final navItems = [
+      _NavItem(Icons.dashboard, s.dashboard, '/dashboard'),
+      _NavItem(Icons.people, s.clients, '/clients'),
+      _NavItem(Icons.gavel, s.cases, '/cases'),
+      _NavItem(Icons.calendar_month, s.calendar, '/calendar'),
+      _NavItem(Icons.notifications, s.notifications, '/notifications'),
+      if (user?.isAdmin == true)
+        _NavItem(Icons.manage_accounts, s.users, '/users'),
+    ];
+
+    final selectedIndex = navItems.indexWhere((n) => location.startsWith(n.path));
+
+    final shell = isMobile
+        ? Scaffold(
+            body: child,
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+              onDestinationSelected: (i) => context.go(navItems[i].path),
+              destinations: navItems.map((n) => NavigationDestination(
+                icon: Icon(n.icon),
+                label: n.label,
+              )).toList(),
+            ),
+          )
+        : Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+                  onDestinationSelected: (i) => context.go(navItems[i].path),
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Icon(Icons.balance, size: 36, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () => ref.read(authProvider.notifier).logout(),
+                  ),
+                  destinations: navItems.map((n) => NavigationRailDestination(
+                    icon: Icon(n.icon),
+                    label: Text(n.label),
+                  )).toList(),
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: child,
+                )),
+              ],
+            ),
+          );
+
+    return Directionality(
+      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+      child: OfflineBanner(child: shell),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final String path;
+  const _NavItem(this.icon, this.label, this.path);
+}
