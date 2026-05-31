@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/cases_provider.dart';
+import '../../theme/app_theme.dart';
 
 class CasesScreen extends ConsumerStatefulWidget {
   const CasesScreen({super.key});
@@ -40,41 +41,78 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
         Row(
           children: [
             Expanded(child: Text(s.cases, style: Theme.of(context).textTheme.headlineSmall)),
-            FilledButton.icon(
-              icon: const Icon(Icons.add),
-              label: Text(s.add),
-              onPressed: () => context.go('/cases/add'),
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.goldGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: AppColors.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.add),
+                label: Text(s.add, style: const TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () => context.go('/cases/add'),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           controller: _searchCtrl,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
             hintText: s.search,
-            border: const OutlineInputBorder(),
             suffixIcon: _searchCtrl.text.isNotEmpty
-                ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
-                    _searchCtrl.clear();
-                    ref.read(casesProvider.notifier).search('');
-                  })
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      ref.read(casesProvider.notifier).search('');
+                    })
                 : null,
           ),
           onChanged: (v) => ref.read(casesProvider.notifier).search(v),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        // Filter Chips Row
         SizedBox(
-          height: 36,
+          height: 38,
           child: ListView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             children: _statuses.map((st) {
               final active = (_statusFilter ?? 'ALL') == st;
               return Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.only(left: 8),
                 child: ChoiceChip(
-                  label: Text(s.status == st ? st : st),
+                  label: Text(
+                    st == 'ALL'
+                        ? 'الكل'
+                        : st == 'ACTIVE'
+                            ? s.active
+                            : st == 'CLOSED'
+                                ? s.closed
+                                : s.suspended,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: active ? AppColors.onPrimary : AppColors.onSurface,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                   selected: active,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: active ? AppColors.primary : AppColors.border),
+                  ),
+                  showCheckmark: false,
                   onSelected: (_) {
                     setState(() => _statusFilter = active ? 'ALL' : st);
                     ref.read(casesProvider.notifier).filterByStatus(_statusFilter);
@@ -84,27 +122,53 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 8),
-        if (state.error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(state.error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
-          ),
+        const SizedBox(height: 16),
         Expanded(
           child: state.isLoading && state.cases.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : state.cases.isEmpty
-                  ? Center(child: Text(state.error ?? s.noData))
+                  ? Center(child: Text(s.noData))
                   : ListView.separated(
+                      physics: const BouncingScrollPhysics(),
                       itemCount: state.cases.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (_, i) {
                         final c = state.cases[i];
-                        return ListTile(
-                          title: Text('${s.caseNumber}: ${c.caseNumber} / ${c.caseYear}'),
-                          subtitle: Text('${c.courtName} | ${c.caseType}'),
-                          trailing: _StatusBadge(c.status),
-                          onTap: () => context.go('/cases/${c.id}'),
+
+                        Color accentColor;
+                        switch (c.status) {
+                          case 'ACTIVE':
+                            accentColor = AppColors.success;
+                            break;
+                          case 'CLOSED':
+                            accentColor = AppColors.onSurfaceDim;
+                            break;
+                          case 'SUSPENDED':
+                            accentColor = AppColors.warning;
+                            break;
+                          default:
+                            accentColor = AppColors.primary;
+                        }
+
+                        return GlassCard(
+                          accentColor: accentColor,
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            title: Text(
+                              '${s.caseNumber}: ${c.caseNumber} / ${c.caseYear}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '${c.courtName} | ${c.caseType}',
+                                style: const TextStyle(color: AppColors.onSurfaceDim, fontSize: 13),
+                              ),
+                            ),
+                            trailing: _StatusBadge(c.status),
+                            onTap: () => context.go('/cases/${c.id}'),
+                          ),
                         );
                       },
                     ),
@@ -125,21 +189,32 @@ class _StatusBadge extends StatelessWidget {
     String label;
     switch (status) {
       case 'ACTIVE':
-        color = Colors.green;
+        color = AppColors.success;
         label = s.active;
         break;
       case 'CLOSED':
-        color = Colors.grey;
+        color = AppColors.onSurfaceDim;
         label = s.closed;
         break;
       case 'SUSPENDED':
-        color = Colors.orange;
+        color = AppColors.warning;
         label = s.suspended;
         break;
       default:
-        color = Colors.blueGrey;
+        color = AppColors.secondary;
         label = status;
     }
-    return Chip(label: Text(label, style: TextStyle(fontSize: 12, color: color)), backgroundColor: color.withValues(alpha: 0.1), visualDensity: VisualDensity.compact);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.24)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+      ),
+    );
   }
 }

@@ -19,6 +19,7 @@ import 'screens/users/users_screen.dart';
 import 'widgets/responsive_layout.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/forms/case_form.dart';
+import 'theme/app_theme.dart';
 
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
@@ -65,6 +66,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
 
     if (!auth.isInitialized) {
       return MaterialApp(
+        theme: AppTheme.darkTheme,
         locale: locale,
         localizationsDelegates: const [
           S.delegate,
@@ -80,6 +82,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
     return MaterialApp.router(
       title: 'Law Office',
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
       locale: locale,
       localizationsDelegates: const [
         S.delegate,
