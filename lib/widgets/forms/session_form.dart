@@ -23,10 +23,21 @@ class _SessionFormState extends ConsumerState<SessionForm> {
   final _formKey = GlobalKey<FormState>();
   DateTime _sessionDate = DateTime.now();
   String? _result;
+  String? _adjournmentReason;
   DateTime? _nextSessionDate;
   String _attendedBy = '';
   String _notes = '';
   bool _submitting = false;
+
+  final List<String> adjournmentReasons = [
+    'لإعادة الإعلان',
+    'لتقديم حوافظ المستندات',
+    'للإطلاع والتعقيب',
+    'لتقديم مذكرات الدفاع',
+    'لحضور الخصوم',
+    'للمرافعة',
+    'لحجز الدعوى للحكم',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -64,9 +75,21 @@ class _SessionFormState extends ConsumerState<SessionForm> {
                     DropdownMenuItem(value: 'APPEAL', child: Text(s.appeal)),
                     DropdownMenuItem(value: 'OTHER', child: Text(s.other)),
                   ],
-                  onChanged: (v) => setState(() => _result = v),
+                  onChanged: (v) => setState(() {
+                    _result = v;
+                    _adjournmentReason = null;
+                  }),
                   decoration: InputDecoration(labelText: s.result, border: const OutlineInputBorder()),
                 ),
+                if (_result == 'POSTPONED') ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _adjournmentReason,
+                    items: adjournmentReasons.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontFamily: 'Cairo')))).toList(),
+                    onChanged: (v) => setState(() => _adjournmentReason = v),
+                    decoration: InputDecoration(labelText: 'سبب التأجيل', border: const OutlineInputBorder(), prefixIcon: const Icon(Icons.gavel)),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () async {
@@ -116,13 +139,17 @@ class _SessionFormState extends ConsumerState<SessionForm> {
 
   Future<void> _submit() async {
     setState(() => _submitting = true);
+    final notes = [
+      if (_adjournmentReason != null) _adjournmentReason,
+      if (_notes.isNotEmpty) _notes,
+    ].join(' | ');
     final data = {
       'caseId': widget.caseId,
       'sessionDate': _sessionDate.toIso8601String(),
       'result': _result,
       'nextSessionDate': _nextSessionDate?.toIso8601String(),
       'attendedBy': _attendedBy.isEmpty ? null : _attendedBy,
-      'notes': _notes.isEmpty ? null : _notes,
+      'notes': notes.isEmpty ? null : notes,
     };
     try {
       final api = ref.read(apiServiceProvider);

@@ -11,6 +11,17 @@ import '../../models/document.dart';
 import '../../providers/api_provider.dart';
 import '../../widgets/forms/session_form.dart';
 import '../../widgets/forms/payment_form.dart';
+import '../../theme/app_theme.dart';
+import '../../services/receipt_service.dart';
+
+DateTime calculateAppealDeadline(DateTime judgmentDate, String courtType) {
+  if (courtType.contains('مستعجل')) {
+    return judgmentDate.add(const Duration(days: 15));
+  } else if (courtType.contains('نقض') || courtType.contains('إدارية')) {
+    return judgmentDate.add(const Duration(days: 60));
+  }
+  return judgmentDate.add(const Duration(days: 40));
+}
 
 class CaseDetailScreen extends ConsumerStatefulWidget {
   final String caseId;
@@ -103,6 +114,33 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
               ),
             ),
           ),
+          // Appeal deadline warning
+          ..._sessions.where((ssn) => ssn.result == 'JUDGMENT').map((ssn) {
+            final deadline = calculateAppealDeadline(ssn.sessionDate, c.courtName);
+            final daysLeft = deadline.difference(DateTime.now()).inDays;
+            if (daysLeft > 7) return const SizedBox.shrink();
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              color: daysLeft <= 0 ? AppColors.error : AppColors.warning.withOpacity(0.15),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(daysLeft <= 0 ? Icons.warning : Icons.schedule, color: daysLeft <= 0 ? AppColors.error : AppColors.warning),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        daysLeft <= 0
+                            ? 'انتهت مهلة الطعن! تاريخ الحكم: ${ssn.sessionDate.toString().split(' ')[0]}'
+                            : 'مهلة الطعن تنتهي خلال $daysLeft أيام (${deadline.toString().split(' ')[0]})',
+                        style: TextStyle(color: daysLeft <= 0 ? AppColors.error : AppColors.warning, fontWeight: FontWeight.w600, fontFamily: 'Cairo'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
           TabBar(
             controller: _tabCtrl,
             isScrollable: true,
@@ -118,7 +156,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
               controller: _tabCtrl,
               children: [
                 _SessionsTab(sessions: _sessions, caseId: c.id, onChanged: _load),
-                _PaymentsTab(payments: _payments, caseId: c.id, onChanged: _load),
+                _PaymentsTab(payments: _payments, caseId: c.id, caseNumber: c.caseNumber, caseYear: c.caseYear, clientName: c.clientName ?? '', onChanged: _load),
                 _DocumentsTab(documents: _documents, caseId: c.id, onChanged: _load),
                 _ActionsTab(actions: _actions),
               ],
@@ -200,9 +238,19 @@ class _SessionsTab extends StatelessWidget {
 class _PaymentsTab extends StatelessWidget {
   final List<Payment> payments;
   final String caseId;
+  final String caseNumber;
+  final String caseYear;
+  final String clientName;
   final VoidCallback onChanged;
 
-  const _PaymentsTab({required this.payments, required this.caseId, required this.onChanged});
+  const _PaymentsTab({
+    required this.payments,
+    required this.caseId,
+    required this.caseNumber,
+    required this.caseYear,
+    required this.clientName,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +283,24 @@ class _PaymentsTab extends StatelessWidget {
                     return ListTile(
                       title: Text('${p.amount} EGP'),
                       subtitle: Text(p.paidAt.toString().split('.')[0]),
-                      trailing: Text(p.note ?? ''),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (p.note != null) Text(p.note!, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceDim)),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.receipt, size: 20, color: AppColors.primary),
+                            tooltip: 'طباعة سند قبض',
+                            onPressed: () => generateReceiptPdf(
+                              clientName: clientName,
+                              amount: p.amount.toString(),
+                              caseNum: '$caseNumber / $caseYear',
+                              date: p.paidAt.toString().split('.')[0],
+                              note: p.note,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),

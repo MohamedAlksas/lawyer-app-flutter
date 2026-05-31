@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../services/update_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -33,6 +34,13 @@ class SettingsScreen extends ConsumerWidget {
                     if (v != null) ref.read(localeProvider.notifier).state = Locale(v);
                   },
                 ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.update),
+                title: Text('Check for Updates'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => UpdateService().checkForUpdate(context),
               ),
               const Divider(height: 1),
               ListTile(

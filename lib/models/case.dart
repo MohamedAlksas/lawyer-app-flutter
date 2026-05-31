@@ -9,6 +9,7 @@ class Case {
   final String circuitNumber;
   final String caseType;
   final String subject;
+  final String? clientName;
   final String? opposingParty;
   final String assignedLawyerId;
   final String status;
@@ -28,6 +29,7 @@ class Case {
     required this.circuitNumber,
     required this.caseType,
     required this.subject,
+    this.clientName,
     this.opposingParty,
     required this.assignedLawyerId,
     required this.status,
@@ -68,6 +70,7 @@ class Case {
         circuitNumber: map['circuitNumber']?.toString() ?? '',
         caseType: map['caseType'] ?? '',
         subject: map['subject'] ?? '',
+        clientName: map['client']?['fullName'],
         opposingParty: map['opposingParty'],
         assignedLawyerId: map['assignedLawyerId'] ?? '',
         status: map['status'] ?? 'ACTIVE',
