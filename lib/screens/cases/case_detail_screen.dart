@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../models/case.dart';
 import '../../models/session.dart';
@@ -95,7 +95,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${s.caseInfo}', style: Theme.of(context).textTheme.titleMedium),
+                  Text(s.caseInfo, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   _Row(s.courtName, c.courtName),
                   _Row(s.circuitNumber, c.circuitNumber),
@@ -113,7 +113,6 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
               ),
             ),
           ),
-          // Appeal deadline warning
           ..._sessions.where((ssn) => ssn.result == 'JUDGMENT').map((ssn) {
             final deadline = calculateAppealDeadline(ssn.sessionDate, c.courtName);
             final daysLeft = deadline.difference(DateTime.now()).inDays;
@@ -378,8 +377,8 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
   bool _uploading = false;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+    fp.FilePickerResult? result = await fp.FilePicker.pickFiles(
+      type: fp.FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
       withData: true,
     );
@@ -476,5 +475,4 @@ class _ActionsTab extends StatelessWidget {
       },
     );
   }
-}
 }
