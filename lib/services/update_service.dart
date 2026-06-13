@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -30,8 +29,7 @@ class UpdateService {
       final data = res.data;
       final latestVersion = data['version'] as String;
 
-      final isWindows = defaultTargetPlatform == TargetPlatform.windows;
-      final downloadUrl = (isWindows
+      final downloadUrl = (defaultTargetPlatform == TargetPlatform.windows
               ? data['downloadUrlWindows']
               : data['downloadUrl']) as String? ??
           '';
@@ -85,32 +83,41 @@ class UpdateService {
   }
 
   Future<void> _downloadAndInstall(BuildContext context, String url, String version) async {
-    final fileName = url.split('/').last;
-    final tempDir = await getTemporaryDirectory();
-    final savePath = '${tempDir.path}/$fileName';
+    try {
+      final fileName = url.split('/').last;
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/$fileName';
 
-    if (!context.mounted) return;
+      if (!context.mounted) return;
 
-    // Show progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _DownloadDialog(
-        url: url,
-        savePath: savePath,
-        version: version,
-      ),
-    );
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _DownloadDialog(
+          url: url,
+          savePath: savePath,
+          version: version,
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update error: $e')),
+        );
+      }
+    }
   }
 
   int _compareVersions(String a, String b) {
-    final partsA = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    final partsB = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    for (var i = 0; i < 3; i++) {
-      final va = i < partsA.length ? partsA[i] : 0;
-      final vb = i < partsB.length ? partsB[i] : 0;
-      if (va != vb) return va - vb;
-    }
+    try {
+      final partsA = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final partsB = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      for (var i = 0; i < 3; i++) {
+        final va = i < partsA.length ? partsA[i] : 0;
+        final vb = i < partsB.length ? partsB[i] : 0;
+        if (va != vb) return va - vb;
+      }
+    } catch (_) {}
     return 0;
   }
 }
@@ -169,7 +176,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
         if (result.type != ResultType.done) {
           setState(() {
             _isError = true;
-            _status = 'Could not launch installer: ${result.message}\nPlease try downloading manually.';
+            _status = 'Could not launch installer: ${result.message}\nPlease install the downloaded file manually from your temp folder.';
           });
         } else {
           Navigator.pop(context);
@@ -194,7 +201,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
         children: [
           if (!_isError) LinearProgressIndicator(value: _progress),
           const SizedBox(height: 16),
-          Text(_status),
+          Text(_status, textAlign: TextAlign.center),
         ],
       ),
       actions: [

@@ -56,28 +56,36 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final api = ref.read(apiServiceProvider);
       final res = await api.get('/cases/${widget.caseId}');
       final d = res.data;
-      _case = Case.fromMap(d);
-      _sessions = (d['sessions'] as List?)?.map((e) => Session.fromMap(e)).toList() ?? [];
-      _payments = (d['payments'] as List?)?.map((e) => Payment.fromMap(e)).toList() ?? [];
-      _documents = (d['documents'] as List?)?.map((e) => Document.fromMap(e)).toList() ?? [];
       
-      final c = _case!;
-      // Build timeline from multiple sources
-      _timelineItems = [
-        ..._sessions.map((s) => {'type': 'SESSION', 'date': s.sessionDate, 'title': s.result ?? 'Session', 'subtitle': c.courtName}),
-        ..._payments.map((p) => {'type': 'PAYMENT', 'date': p.paidAt, 'title': 'Payment Received', 'subtitle': '${p.amount} EGP'}),
-        ...(_documents).map((doc) => {'type': 'DOCUMENT', 'date': doc.createdAt ?? DateTime.now(), 'title': 'Document Added', 'subtitle': doc.name}),
-      ];
-      _timelineItems.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+      final c = Case.fromMap(d);
+      final ssnList = (d['sessions'] as List?)?.map((e) => Session.fromMap(e)).toList() ?? [];
+      final payList = (d['payments'] as List?)?.map((e) => Payment.fromMap(e)).toList() ?? [];
+      final docList = (d['documents'] as List?)?.map((e) => Document.fromMap(e)).toList() ?? [];
 
-      _totalPaid = (d['totalPaid'] ?? 0).toDouble();
-    } catch (_) {}
-    setState(() => _loading = false);
+      setState(() {
+        _case = c;
+        _sessions = ssnList;
+        _payments = payList;
+        _documents = docList;
+        _totalPaid = (d['totalPaid'] ?? 0).toDouble();
+
+        _timelineItems = [
+          ...ssnList.map((s) => {'type': 'SESSION', 'date': s.sessionDate, 'title': s.result ?? 'Session', 'subtitle': c.courtName}),
+          ...payList.map((p) => {'type': 'PAYMENT', 'date': p.paidAt, 'title': 'Payment Received', 'subtitle': '${p.amount} EGP'}),
+          ...docList.map((doc) => {'type': 'DOCUMENT', 'date': doc.createdAt ?? DateTime.now(), 'title': 'Document Added', 'subtitle': doc.name}),
+        ];
+        _timelineItems.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -510,14 +518,16 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
   bool _uploading = false;
 
   Future<void> _pickFile() async {
-    fp.FilePickerResult? result = await fp.FilePicker.pickFiles(
-      type: fp.FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
-      withData: true,
-    );
-    if (result != null) {
-      setState(() => _selectedFile = result.files.single);
-    }
+    try {
+      fp.FilePickerResult? result = await fp.FilePicker.pickFiles(
+        type: fp.FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+        withData: true,
+      );
+      if (result != null && mounted) {
+        setState(() => _selectedFile = result.files.single);
+      }
+    } catch (_) {}
   }
 
   Future<void> _upload(WidgetRef ref) async {
