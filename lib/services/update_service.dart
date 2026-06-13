@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'api_service.dart';
+import '../app.dart'; // To access navigatorKey
 
 class UpdateService {
   static final UpdateService _instance = UpdateService._();
@@ -45,26 +46,14 @@ class UpdateService {
 
       if (_compareVersions(latestVersion, currentVersion) > 0) {
         if (context.mounted) {
-          await showDialog(
+          showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (_) => AlertDialog(
-              title: const Text('Update Available'),
-              content: Text(
-                  'Version $latestVersion is available.\nYou have $currentVersion.\n\n${data['releaseNotes'] ?? ''}'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Later'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _downloadAndInstall(context, downloadUrl, latestVersion);
-                  },
-                  child: const Text('Update Now'),
-                ),
-              ],
+            builder: (_) => _UpdateFlowDialog(
+              latestVersion: latestVersion,
+              currentVersion: currentVersion,
+              releaseNotes: data['releaseNotes'] ?? '',
+              downloadUrl: downloadUrl,
             ),
           );
         }
@@ -77,32 +66,6 @@ class UpdateService {
       if (manual && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to check for updates: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _downloadAndInstall(BuildContext context, String url, String version) async {
-    try {
-      final fileName = url.split('/').last;
-      final tempDir = await getTemporaryDirectory();
-      final savePath = '${tempDir.path}/$fileName';
-
-      if (!context.mounted) return;
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => _DownloadDialog(
-          url: url,
-          savePath: savePath,
-          version: version,
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update error: $e')),
         );
       }
     }
@@ -122,42 +85,49 @@ class UpdateService {
   }
 }
 
-class _DownloadDialog extends StatefulWidget {
-  final String url;
-  final String savePath;
-  final String version;
+class _UpdateFlowDialog extends StatefulWidget {
+  final String latestVersion;
+  final String currentVersion;
+  final String releaseNotes;
+  final String downloadUrl;
 
-  const _DownloadDialog({
-    required this.url,
-    required this.savePath,
-    required this.version,
+  const _UpdateFlowDialog({
+    required this.latestVersion,
+    required this.currentVersion,
+    required this.releaseNotes,
+    required this.downloadUrl,
   });
 
   @override
-  State<_DownloadDialog> createState() => _DownloadDialogState();
+  State<_UpdateFlowDialog> createState() => _UpdateFlowDialogState();
 }
 
-class _DownloadDialogState extends State<_DownloadDialog> {
+class _UpdateFlowDialogState extends State<_UpdateFlowDialog> {
+  bool _isDownloading = false;
   double _progress = 0;
-  String _status = 'Starting download...';
+  String _status = '';
   bool _isError = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _startDownload();
-  }
-
   Future<void> _startDownload() async {
+    setState(() {
+      _isDownloading = true;
+      _status = 'Preparing download...';
+    });
+
     try {
-      await Dio().download(
-        widget.url,
-        widget.savePath,
+      final dio = Dio();
+      final fileName = widget.downloadUrl.split('/').last;
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/$fileName';
+
+      await dio.download(
+        widget.downloadUrl,
+        savePath,
         onReceiveProgress: (count, total) {
           if (total != -1) {
             setState(() {
               _progress = count / total;
-              _status = 'Downloading update: ${(_progress * 100).toStringAsFixed(0)}%';
+              _status = 'Downloading: ${(_progress * 100).toStringAsFixed(0)}%';
             });
           }
         },
@@ -170,15 +140,16 @@ class _DownloadDialogState extends State<_DownloadDialog> {
 
       await Future.delayed(const Duration(milliseconds: 500));
       
-      final result = await OpenFilex.open(widget.savePath);
+      final result = await OpenFilex.open(savePath);
       
       if (mounted) {
         if (result.type != ResultType.done) {
           setState(() {
             _isError = true;
-            _status = 'Could not launch installer: ${result.message}\nPlease install the downloaded file manually from your temp folder.';
+            _status = 'Could not launch installer: ${result.message}\nPlease install manually from your temp folder.';
           });
         } else {
+          // Success! Installer is running, app will close/update
           Navigator.pop(context);
         }
       }
@@ -194,22 +165,40 @@ class _DownloadDialogState extends State<_DownloadDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(_isError ? 'Update Failed' : 'Updating to ${widget.version}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!_isError) LinearProgressIndicator(value: _progress),
-          const SizedBox(height: 16),
-          Text(_status, textAlign: TextAlign.center),
+    if (_isDownloading) {
+      return AlertDialog(
+        title: Text(_isError ? 'Update Failed' : 'Installing Update'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isError) LinearProgressIndicator(value: _progress),
+            const SizedBox(height: 16),
+            Text(_status, textAlign: TextAlign.center),
+          ],
+        ),
+        actions: [
+          if (_isError)
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
         ],
-      ),
+      );
+    }
+
+    return AlertDialog(
+      title: const Text('Update Available'),
+      content: Text(
+          'Version ${widget.latestVersion} is available.\nYou have ${widget.currentVersion}.\n\n${widget.releaseNotes}'),
       actions: [
-        if (_isError)
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Later'),
+        ),
+        FilledButton(
+          onPressed: _startDownload,
+          child: const Text('Update Now'),
+        ),
       ],
     );
   }

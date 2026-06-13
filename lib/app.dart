@@ -22,7 +22,8 @@ import 'widgets/offline_banner.dart';
 import 'widgets/forms/case_form.dart';
 import 'theme/app_theme.dart';
 
-// Version Trigger: 2026-06-13-21-45
+final navigatorKey = GlobalKey<NavigatorState>();
+
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
 
@@ -87,6 +88,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
       title: 'Law Office v2',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      key: navigatorKey,
       locale: locale,
       localizationsDelegates: const [
         S.delegate,
