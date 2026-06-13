@@ -11,8 +11,15 @@ class UpdateService {
 
   final ApiService _api = ApiService();
 
-  Future<void> checkForUpdate(BuildContext context) async {
-    if (kIsWeb) return; // Updates don't apply to web
+  Future<void> checkForUpdate(BuildContext context, {bool manual = false}) async {
+    if (kIsWeb) {
+      if (manual && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Web version is always up to date.')),
+        );
+      }
+      return;
+    }
     try {
       final info = await PackageInfo.fromPlatform();
       final currentVersion = info.version;
@@ -26,7 +33,14 @@ class UpdateService {
               : data['downloadUrl']) as String? ??
           '';
 
-      if (downloadUrl.isEmpty) return;
+      if (downloadUrl.isEmpty) {
+        if (manual && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No valid update URL found.')),
+          );
+        }
+        return;
+      }
 
       if (_compareVersions(latestVersion, currentVersion) > 0) {
         if (context.mounted) {
@@ -53,8 +67,18 @@ class UpdateService {
             ),
           );
         }
+      } else if (manual && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('You are on the latest version ($currentVersion).')),
+        );
       }
-    } catch (_) {}
+    } catch (e) {
+      if (manual && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to check for updates: $e')),
+        );
+      }
+    }
   }
 
   int _compareVersions(String a, String b) {

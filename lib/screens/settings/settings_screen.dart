@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -38,9 +39,23 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.update),
-                title: Text('Check for Updates'),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => UpdateService().checkForUpdate(context),
+                title: Text(s.checkUpdates ?? 'Check for Updates'),
+                subtitle: FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return Text('Current Version: ${snapshot.data!.version}');
+                    }
+                    return const Text('Loading...');
+                  },
+                ),
+                trailing: const Icon(Icons.refresh),
+                onTap: () async {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Checking for updates...')),
+                  );
+                  await UpdateService().checkForUpdate(context, manual: true);
+                },
               ),
               const Divider(height: 1),
               ListTile(
