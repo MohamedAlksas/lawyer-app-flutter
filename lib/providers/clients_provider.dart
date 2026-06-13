@@ -65,7 +65,7 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
 
       await CacheService().cache(cacheKey, res.data);
 
-      final newItems = (res.data['items'] as List).map((e) => Client.fromMap(e)).toList();
+      final newItems = (res.data['data'] as List).map((e) => Client.fromMap(e)).toList();
 
       state = state.copyWith(
         isLoading: false,

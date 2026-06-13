@@ -115,8 +115,9 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
                   ),
                   showCheckmark: false,
                   onSelected: (_) {
-                    setState(() => _statusFilter = active ? 'ALL' : st);
-                    ref.read(casesProvider.notifier).filterByStatus(_statusFilter);
+                    final newStatus = st == 'ALL' ? null : st;
+                    setState(() => _statusFilter = st);
+                    ref.read(casesProvider.notifier).filterByStatus(newStatus);
                   },
                 ),
               );

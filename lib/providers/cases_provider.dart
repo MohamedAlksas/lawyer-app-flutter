@@ -72,7 +72,7 @@ class CasesNotifier extends StateNotifier<CasesState> {
 
       await CacheService().cache(cacheKey, res.data);
 
-      final newItems = (res.data['items'] as List).map((e) => Case.fromMap(e)).toList();
+      final newItems = (res.data['data'] as List).map((e) => Case.fromMap(e)).toList();
 
       state = state.copyWith(
         isLoading: false,
