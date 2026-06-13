@@ -3,6 +3,11 @@ name: Build & Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.metadata'
   workflow_dispatch:
 
 jobs:
@@ -30,6 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+        with:
+          cache: true
       - run: flutter pub get
       - run: flutter test
 
@@ -40,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+        with:
+          cache: true
       - name: Update pubspec version
         run: |
           sed -i "s/^version: .*/version: ${{ needs.version.outputs.version }}+${{ needs.version.outputs.build }}/" pubspec.yaml
@@ -60,6 +69,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+        with:
+          cache: true
       - name: Update pubspec version
         run: |
           (Get-Content pubspec.yaml) -replace '^version: .*', 'version: ${{ needs.version.outputs.version }}+${{ needs.version.outputs.build }}' | Set-Content pubspec.yaml
