@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file_plus/open_file_plus.dart';
+import 'package:open_filex/open_filex.dart';
 import 'api_service.dart';
 
 class UpdateService {
@@ -85,7 +85,6 @@ class UpdateService {
   }
 
   Future<void> _downloadAndInstall(BuildContext context, String url, String version) async {
-    final dio = Dio();
     final fileName = url.split('/').last;
     final tempDir = await getTemporaryDirectory();
     final savePath = '${tempDir.path}/$fileName';
@@ -164,7 +163,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
 
       await Future.delayed(const Duration(milliseconds: 500));
       
-      final result = await OpenFile.open(widget.savePath);
+      final result = await OpenFilex.open(widget.savePath);
       
       if (mounted) {
         if (result.type != ResultType.done) {

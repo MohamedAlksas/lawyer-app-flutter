@@ -12,6 +12,7 @@ import '../../widgets/forms/session_form.dart';
 import '../../widgets/forms/payment_form.dart';
 import '../../theme/app_theme.dart';
 import '../../services/receipt_service.dart';
+import '../../widgets/shimmer_loader.dart';
 
 DateTime calculateAppealDeadline(DateTime judgmentDate, String courtType) {
   if (courtType.contains('مستعجل')) {
@@ -37,7 +38,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
   List<Session> _sessions = [];
   List<Payment> _payments = [];
   List<Document> _documents = [];
-  List<dynamic> _actions = [];
+  List<dynamic> _timelineItems = [];
   bool _loading = true;
   double _totalPaid = 0;
 
@@ -64,7 +65,16 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
       _sessions = (d['sessions'] as List?)?.map((e) => Session.fromMap(e)).toList() ?? [];
       _payments = (d['payments'] as List?)?.map((e) => Payment.fromMap(e)).toList() ?? [];
       _documents = (d['documents'] as List?)?.map((e) => Document.fromMap(e)).toList() ?? [];
-      _actions = (d['actions'] as List?) ?? [];
+      
+      final c = _case!;
+      // Build timeline from multiple sources
+      _timelineItems = [
+        ..._sessions.map((s) => {'type': 'SESSION', 'date': s.sessionDate, 'title': s.result ?? 'Session', 'subtitle': c.courtName}),
+        ..._payments.map((p) => {'type': 'PAYMENT', 'date': p.paidAt, 'title': 'Payment Received', 'subtitle': '${p.amount} EGP'}),
+        ...(_documents).map((doc) => {'type': 'DOCUMENT', 'date': doc.createdAt ?? DateTime.now(), 'title': 'Document Added', 'subtitle': doc.name}),
+      ];
+      _timelineItems.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+
       _totalPaid = (d['totalPaid'] ?? 0).toDouble();
     } catch (_) {}
     setState(() => _loading = false);
@@ -78,6 +88,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
 
     final c = _case!;
     final remaining = c.agreedFee - _totalPaid;
+    final paymentProgress = c.agreedFee > 0 ? (_totalPaid / c.agreedFee).clamp(0.0, 1.0) : 0.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -95,20 +106,40 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(s.caseInfo, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(s.caseInfo, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      _StatusBadge(c.status),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   _Row(s.courtName, c.courtName),
                   _Row(s.circuitNumber, c.circuitNumber),
                   _Row(s.caseType, c.caseType),
                   _Row(s.subject, c.subject),
                   if (c.opposingParty != null) _Row(s.opposingParty, c.opposingParty!),
-                  _Row(s.status, c.status),
-                  const Divider(),
-                  Text(s.financialSummary, style: Theme.of(context).textTheme.titleSmall),
-                  _Row(s.agreedFee, '${c.agreedFee} EGP'),
-                  _Row(s.totalPaid, '$_totalPaid EGP'),
-                  _Row(s.remaining, '$remaining EGP',
-                      valueStyle: TextStyle(color: remaining > 0 ? Colors.red : Colors.green)),
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.financialSummary, style: Theme.of(context).textTheme.titleSmall),
+                            const SizedBox(height: 4),
+                            Text('${_totalPaid.toStringAsFixed(0)} / ${c.agreedFee.toStringAsFixed(0)} EGP', 
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      CircularProgressIndicator(
+                        value: paymentProgress,
+                        backgroundColor: AppColors.border,
+                        color: paymentProgress >= 1.0 ? AppColors.success : AppColors.primary,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -119,7 +150,7 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
             if (daysLeft > 7) return const SizedBox.shrink();
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              color: daysLeft <= 0 ? AppColors.error : AppColors.warning.withOpacity(0.15),
+              color: daysLeft <= 0 ? AppColors.error.withOpacity(0.1) : AppColors.warning.withOpacity(0.15),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -143,10 +174,10 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
             controller: _tabCtrl,
             isScrollable: true,
             tabs: [
-              Tab(text: '${s.sessions} (${_sessions.length})'),
-              Tab(text: '${s.payments} (${_payments.length})'),
-              Tab(text: '${s.documents} (${_documents.length})'),
-              Tab(text: '${s.actions} (${_actions.length})'),
+              Tab(text: s.sessions),
+              Tab(text: s.payments),
+              Tab(text: s.documents),
+              Tab(text: 'الجدول الزمني'),
             ],
           ),
           Expanded(
@@ -156,12 +187,35 @@ class _CaseDetailScreenState extends ConsumerState<CaseDetailScreen>
                 _SessionsTab(sessions: _sessions, caseId: c.id, onChanged: _load),
                 _PaymentsTab(payments: _payments, caseId: c.id, caseNumber: c.caseNumber, caseYear: c.caseYear, clientName: c.clientName ?? '', onChanged: _load),
                 _DocumentsTab(documents: _documents, caseId: c.id, onChanged: _load),
-                _ActionsTab(actions: _actions),
+                _TimelineTab(items: _timelineItems),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge(this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    Color color = AppColors.primary;
+    if (status == 'ACTIVE') color = AppColors.success;
+    if (status == 'CLOSED') color = AppColors.onSurfaceDim;
+    if (status == 'SUSPENDED') color = AppColors.warning;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(status, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -175,11 +229,12 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w500))),
-          Expanded(child: Text(value, style: valueStyle)),
+          SizedBox(width: 120, child: Text(label, style: TextStyle(color: Theme.of(context).hintColor, fontSize: 13))),
+          Expanded(child: Text(value, style: valueStyle?.copyWith(fontSize: 14) ?? const TextStyle(fontSize: 14))),
         ],
       ),
     );
@@ -200,16 +255,19 @@ class _SessionsTab extends StatelessWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(s.addSession),
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => DraggableScrollableSheet(
-                initialChildSize: 0.8,
-                maxChildSize: 0.95,
-                builder: (_, ctrl) => SessionForm(caseId: caseId, scrollCtrl: ctrl, onSaved: (_, __) => onChanged()),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FilledButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(s.addSession),
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => DraggableScrollableSheet(
+                  initialChildSize: 0.8,
+                  maxChildSize: 0.95,
+                  builder: (_, ctrl) => SessionForm(caseId: caseId, scrollCtrl: ctrl, onSaved: (_, __) => onChanged()),
+                ),
               ),
             ),
           ),
@@ -219,11 +277,16 @@ class _SessionsTab extends StatelessWidget {
               ? Center(child: Text(s.noSessions))
               : ListView.builder(
                   itemCount: sessions.length,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   itemBuilder: (_, i) {
                     final ssn = sessions[i];
-                    return ListTile(
-                      title: Text(ssn.sessionDate.toString().split('.')[0]),
-                      subtitle: Text('${s.result}: ${ssn.result ?? '-'}'),
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.event, size: 20)),
+                        title: Text(ssn.sessionDate.toString().split(' ')[0], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${s.result}: ${ssn.result ?? '-'}'),
+                      ),
                     );
                   },
                 ),
@@ -257,16 +320,19 @@ class _PaymentsTab extends StatelessWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(s.addPayment),
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => DraggableScrollableSheet(
-                initialChildSize: 0.7,
-                maxChildSize: 0.9,
-                builder: (_, ctrl) => PaymentForm(caseId: caseId, scrollCtrl: ctrl, onSaved: (_) => onChanged()),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FilledButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(s.addPayment),
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => DraggableScrollableSheet(
+                  initialChildSize: 0.7,
+                  maxChildSize: 0.9,
+                  builder: (_, ctrl) => PaymentForm(caseId: caseId, scrollCtrl: ctrl, onSaved: (_) => onChanged()),
+                ),
               ),
             ),
           ),
@@ -276,28 +342,24 @@ class _PaymentsTab extends StatelessWidget {
               ? Center(child: Text(s.noData))
               : ListView.builder(
                   itemCount: payments.length,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   itemBuilder: (_, i) {
                     final p = payments[i];
-                    return ListTile(
-                      title: Text('${p.amount} EGP'),
-                      subtitle: Text(p.paidAt.toString().split('.')[0]),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (p.note != null) Text(p.note!, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceDim)),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.receipt, size: 20, color: AppColors.primary),
-                            tooltip: 'طباعة سند قبض',
-                            onPressed: () => generateReceiptPdf(
-                              clientName: clientName,
-                              amount: p.amount.toString(),
-                              caseNum: '$caseNumber / $caseYear',
-                              date: p.paidAt.toString().split('.')[0],
-                              note: p.note,
-                            ),
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text('${p.amount} EGP', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success)),
+                        subtitle: Text(p.paidAt.toString().split(' ')[0]),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.receipt, color: AppColors.primary),
+                          onPressed: () => generateReceiptPdf(
+                            clientName: clientName,
+                            amount: p.amount.toString(),
+                            caseNum: '$caseNumber / $caseYear',
+                            date: p.paidAt.toString().split(' ')[0],
+                            note: p.note,
                           ),
-                        ],
+                        ),
                       ),
                     );
                   },
@@ -322,36 +384,48 @@ class _DocumentsTab extends ConsumerWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.upload_file, size: 18),
-            label: Text(s.uploadDocument),
-            onPressed: () async {
-              final result = await showDialog<String>(
-                context: context,
-                builder: (_) => _UploadDocDialog(caseId: caseId),
-              );
-              if (result != null) onChanged();
-            },
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FilledButton.icon(
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: Text(s.uploadDocument),
+              onPressed: () async {
+                final result = await showDialog<String>(
+                  context: context,
+                  builder: (_) => _UploadDocDialog(caseId: caseId),
+                );
+                if (result != null) onChanged();
+              },
+            ),
           ),
         ),
         Expanded(
           child: documents.isEmpty
               ? Center(child: Text(s.noData))
-              : ListView.builder(
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
                   itemCount: documents.length,
                   itemBuilder: (_, i) {
                     final d = documents[i];
-                    return ListTile(
-                      leading: const Icon(Icons.description),
-                      title: Text(d.name),
-                      subtitle: Text(d.docCategory),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.remove_red_eye_outlined),
-                        onPressed: () => context.push(
-                          Uri(
-                            path: '/preview',
-                            queryParameters: {'url': d.fileUrl, 'title': d.name},
-                          ).toString(),
+                    return InkWell(
+                      onTap: () => context.push(
+                        Uri(path: '/preview', queryParameters: {'url': d.fileUrl, 'title': d.name}).toString(),
+                      ),
+                      child: Card(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.description, size: 32, color: AppColors.primary),
+                            const SizedBox(height: 8),
+                            Text(d.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(d.docCategory, style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceDim)),
+                          ],
                         ),
                       ),
                     );
@@ -359,6 +433,65 @@ class _DocumentsTab extends ConsumerWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _TimelineTab extends StatelessWidget {
+  final List<dynamic> items;
+  const _TimelineTab({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    if (items.isEmpty) return Center(child: Text(s.noData));
+    
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final item = items[i];
+        final isLast = i == items.length - 1;
+        
+        IconData icon;
+        Color color;
+        switch (item['type']) {
+          case 'SESSION': icon = Icons.event; color = AppColors.primary; break;
+          case 'PAYMENT': icon = Icons.payments; color = AppColors.success; break;
+          case 'DOCUMENT': icon = Icons.description; color = AppColors.secondary; break;
+          default: icon = Icons.info; color = Colors.grey;
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                if (!isLast) Container(width: 2, height: 60, color: color.withOpacity(0.3)),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text((item['date'] as DateTime).toString().split(' ')[0], 
+                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+                  Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(item['subtitle'], style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceDim)),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            Icon(icon, color: color.withOpacity(0.5), size: 20),
+          ],
+        );
+      },
     );
   }
 }
@@ -450,27 +583,6 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
                   : Text(s.save),
             ),
           ],
-        );
-      },
-    );
-  }
-}
-
-class _ActionsTab extends StatelessWidget {
-  final List<dynamic> actions;
-  const _ActionsTab({required this.actions});
-
-  @override
-  Widget build(BuildContext context) {
-    final s = S.of(context);
-    if (actions.isEmpty) return Center(child: Text(s.noData));
-    return ListView.builder(
-      itemCount: actions.length,
-      itemBuilder: (_, i) {
-        final a = actions[i];
-        return ListTile(
-          title: Text(a['actionType'] ?? ''),
-          subtitle: Text(a['createdAt']?.toString() ?? ''),
         );
       },
     );

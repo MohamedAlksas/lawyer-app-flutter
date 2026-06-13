@@ -6,6 +6,7 @@ import '../../models/client.dart';
 import '../../providers/clients_provider.dart';
 import '../../widgets/forms/client_form.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
   const ClientsScreen({super.key});
@@ -110,7 +111,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         const SizedBox(height: 16),
         Expanded(
           child: state.isLoading && state.items.isEmpty
-              ? const Center(child: CircularProgressIndicator())
+              ? ListView.builder(
+                  itemCount: 8,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  itemBuilder: (_, __) => const ClientCardSkeleton(),
+                )
               : state.items.isEmpty
                   ? Center(child: Text(s.noData))
                   : ListView.separated(

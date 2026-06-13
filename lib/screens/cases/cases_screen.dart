@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/cases_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class CasesScreen extends ConsumerStatefulWidget {
   const CasesScreen({super.key});
@@ -125,7 +126,11 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
         const SizedBox(height: 16),
         Expanded(
           child: state.isLoading && state.items.isEmpty
-              ? const Center(child: CircularProgressIndicator())
+              ? ListView.builder(
+                  itemCount: 6,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  itemBuilder: (_, __) => const CaseCardSkeleton(),
+                )
               : state.items.isEmpty
                   ? Center(child: Text(s.noData))
                   : ListView.separated(
