@@ -190,6 +190,7 @@ class _AppShell extends ConsumerWidget {
       _NavItem(Icons.gavel, s.cases, '/cases'),
       _NavItem(Icons.calendar_month, s.calendar, '/calendar'),
       _NavItem(Icons.notifications, s.notifications, '/notifications'),
+      _NavItem(Icons.settings, s.settings, '/settings'),
       if (user?.isAdmin == true)
         _NavItem(Icons.manage_accounts, s.users, '/users'),
     ];
