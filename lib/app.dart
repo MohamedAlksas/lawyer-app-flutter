@@ -16,6 +16,7 @@ import 'screens/calendar/calendar_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/users/users_screen.dart';
+import 'screens/common/document_preview_screen.dart';
 import 'widgets/responsive_layout.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/forms/case_form.dart';
@@ -155,6 +156,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/users', builder: (_, __) => const UsersScreen()),
+          GoRoute(
+            path: '/preview',
+            builder: (_, state) => DocumentPreviewScreen(
+              url: state.uri.queryParameters['url'] ?? '',
+              title: state.uri.queryParameters['title'] ?? 'Document',
+            ),
+          ),
         ],
       ),
     ],

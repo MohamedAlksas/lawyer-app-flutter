@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -348,8 +347,13 @@ class _DocumentsTab extends ConsumerWidget {
                       title: Text(d.name),
                       subtitle: Text(d.docCategory),
                       trailing: IconButton(
-                        icon: const Icon(Icons.open_in_new),
-                        onPressed: () => _openDoc(context, d.fileUrl),
+                        icon: const Icon(Icons.remove_red_eye_outlined),
+                        onPressed: () => context.push(
+                          Uri(
+                            path: '/preview',
+                            queryParameters: {'url': d.fileUrl, 'title': d.name},
+                          ).toString(),
+                        ),
                       ),
                     );
                   },
@@ -358,11 +362,6 @@ class _DocumentsTab extends ConsumerWidget {
       ],
     );
   }
-}
-
-void _openDoc(BuildContext context, String url) {
-  // For now, open in external browser or show snackbar
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(url)));
 }
 
 class _UploadDocDialog extends StatefulWidget {
@@ -374,17 +373,18 @@ class _UploadDocDialog extends StatefulWidget {
 }
 
 class _UploadDocDialogState extends State<_UploadDocDialog> {
-  File? _selectedFile;
+  PlatformFile? _selectedFile;
   String _category = 'OTHER';
   bool _uploading = false;
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+      withData: true,
     );
-    if (result != null && result.files.single.path != null) {
-      setState(() => _selectedFile = File(result.files.single.path!));
+    if (result != null) {
+      setState(() => _selectedFile = result.files.single);
     }
   }
 
@@ -394,13 +394,12 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
 
     try {
       final api = ref.read(apiServiceProvider);
-      final filename = _selectedFile!.path.split('/').last;
       await api.uploadFile(
         '/documents',
-        _selectedFile!,
+        _selectedFile!.bytes,
         caseId: widget.caseId,
         docCategory: _category,
-        name: filename,
+        name: _selectedFile!.name,
       );
       if (mounted) Navigator.pop(context, 'success');
     } catch (e) {
@@ -433,7 +432,12 @@ class _UploadDocDialogState extends State<_UploadDocDialog> {
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 icon: const Icon(Icons.attach_file),
-                label: Text(_selectedFile == null ? s.selectFile : _selectedFile!.path.split('/').last),
+                label: Expanded(
+                  child: Text(
+                    _selectedFile == null ? s.selectFile : _selectedFile!.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 onPressed: _uploading ? null : _pickFile,
               ),
             ],
