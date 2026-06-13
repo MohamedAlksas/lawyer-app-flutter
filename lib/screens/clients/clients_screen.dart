@@ -109,16 +109,16 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: state.isLoading && state.clients.isEmpty
+          child: state.isLoading && state.items.isEmpty
               ? const Center(child: CircularProgressIndicator())
-              : state.clients.isEmpty
+              : state.items.isEmpty
                   ? Center(child: Text(s.noData))
                   : ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: state.clients.length,
+                      itemCount: state.items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (_, i) {
-                        final c = state.clients[i];
+                        final c = state.items[i];
                         return GlassCard(
                           accentColor: AppColors.primary,
                           padding: EdgeInsets.zero,

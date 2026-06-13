@@ -124,16 +124,16 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: state.isLoading && state.cases.isEmpty
+          child: state.isLoading && state.items.isEmpty
               ? const Center(child: CircularProgressIndicator())
-              : state.cases.isEmpty
+              : state.items.isEmpty
                   ? Center(child: Text(s.noData))
                   : ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: state.cases.length,
+                      itemCount: state.items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (_, i) {
-                        final c = state.cases[i];
+                        final c = state.items[i];
 
                         Color accentColor;
                         switch (c.status) {
