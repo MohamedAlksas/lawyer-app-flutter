@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class CacheService {
@@ -8,13 +7,8 @@ class CacheService {
   factory CacheService() => _instance;
   CacheService._();
 
-  Directory? _cacheDir;
-
   Future<void> init() async {
-    _cacheDir = Directory('${(await getApplicationDocumentsDirectory()).path}/cache');
-    if (!await _cacheDir!.exists()) {
-      await _cacheDir!.create(recursive: true);
-    }
+    // No-op for web
   }
 
   Future<bool> get isOnline async {
@@ -27,29 +21,11 @@ class CacheService {
   }
 
   Future<void> cache(String key, dynamic data) async {
-    if (_cacheDir == null) return;
-    final file = File('${_cacheDir!.path}/${_sanitizeKey(key)}.json');
-    await file.writeAsString(jsonEncode({
-      'timestamp': DateTime.now().toIso8601String(),
-      'data': data,
-    }));
+    // No-op for web
   }
 
   Future<dynamic> getCached(String key, {Duration? maxAge}) async {
-    if (_cacheDir == null) return null;
-    final file = File('${_cacheDir!.path}/${_sanitizeKey(key)}.json');
-    if (!await file.exists()) return null;
-    try {
-      final contents = await file.readAsString();
-      final decoded = jsonDecode(contents);
-      final timestamp = DateTime.parse(decoded['timestamp'] as String);
-      if (maxAge != null && DateTime.now().difference(timestamp) > maxAge) {
-        return null;
-      }
-      return decoded['data'];
-    } catch (_) {
-      return null;
-    }
+    return null;
   }
 
   String cacheKey(String endpoint, Map<String, dynamic>? query) {
@@ -60,18 +36,10 @@ class CacheService {
   }
 
   Future<void> invalidate(String prefix) async {
-    if (_cacheDir == null) return;
-    final files = _cacheDir!.listSync().where((f) => f.path.contains(_sanitizeKey(prefix)));
-    for (final f in files) {
-      if (f is File) await f.delete();
-    }
+    // No-op for web
   }
 
   Future<void> clear() async {
-    if (_cacheDir == null) return;
-    if (await _cacheDir!.exists()) {
-      await _cacheDir!.delete(recursive: true);
-      await _cacheDir!.create(recursive: true);
-    }
+    // No-op for web
   }
 }

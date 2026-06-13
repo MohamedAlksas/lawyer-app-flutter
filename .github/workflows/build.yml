@@ -24,9 +24,18 @@ jobs:
           echo "build=$COUNT" >> $GITHUB_OUTPUT
           echo "tag=v1.0.$COUNT" >> $GITHUB_OUTPUT
 
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+      - run: flutter pub get
+      - run: flutter test
+
   build-apk:
     name: Build APK
-    needs: version
+    needs: [version, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,30 +51,25 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
 
   build-windows:
-    name: Build Windows EXE
-    needs: version
+    name: Build Windows (MSIX)
+    needs: [version, test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
       - run: flutter pub get
-      - run: >
-          flutter build windows --release
-          --build-name=${{ needs.version.outputs.version }}
-          --build-number=${{ needs.version.outputs.build }}
-      - run: |
-          if (Test-Path "build\windows\x64\runner\Release") {
-            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath windows-build.zip
-          } elseif (Test-Path "build\windows\runner\Release") {
-            Compress-Archive -Path "build\windows\runner\Release\*" -DestinationPath windows-build.zip
-          } else {
-            Get-ChildItem -Path "build\windows" -Recurse -Depth 3 | Select-Object -First 50 FullName
-            throw "Could not find Windows build output"
-          }
+      - name: Build MSIX
+        run: >
+          flutter pub run msix:create
+          --display-name="Law Office"
+          --publisher-display-name="Mohamed Alksas"
+          --publisher="CN=MohamedAlksas"
+          --install-certificate=false
+          --version=${{ needs.version.outputs.version }}.0
       - uses: actions/upload-artifact@v4
         with:
-          name: app-release-windows
-          path: windows-build.zip
+          name: app-release-msix
+          path: build/windows/x64/runner/Release/*.msix
 
   release:
     name: Create Release & Deploy
@@ -105,7 +109,7 @@ jobs:
         run: |
           gh release upload ${{ needs.version.outputs.tag }} \
             app-debug-apk/app-debug.apk \
-            app-release-windows/windows-build.zip \
+            app-release-msix/*.msix \
             --clobber
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +127,8 @@ jobs:
           TAG="${{ needs.version.outputs.tag }}"
           REPO="MohamedAlksas/lawyer-app-flutter"
           APK_URL="https://github.com/$REPO/releases/download/$TAG/app-debug.apk"
-          WIN_URL="https://github.com/$REPO/releases/download/$TAG/windows-build.zip"
+          MSIX_FILE=$(ls app-release-msix/*.msix | head -n 1 | xargs basename)
+          WIN_URL="https://github.com/$REPO/releases/download/$TAG/$MSIX_FILE"
 
           SHA=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/MohamedAlksas/lawyer-app-backend/contents/version.json" | jq -r '.sha')

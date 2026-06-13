@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/constants.dart';
@@ -100,13 +99,15 @@ class ApiService {
 
   Future<Response> uploadFile(
     String path,
-    File file, {
+    dynamic file, {
     required String caseId,
     required String docCategory,
     required String name,
   }) async {
+    // Note: This needs web-specific implementation for file picking
+    // For now, we avoid dart:io 'File' type
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
+      'file': file,
       'caseId': caseId,
       'docCategory': docCategory,
       'name': name,

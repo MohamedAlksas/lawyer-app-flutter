@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +12,7 @@ class UpdateService {
   final ApiService _api = ApiService();
 
   Future<void> checkForUpdate(BuildContext context) async {
+    if (kIsWeb) return; // Updates don't apply to web
     try {
       final info = await PackageInfo.fromPlatform();
       final currentVersion = info.version;
@@ -19,7 +20,7 @@ class UpdateService {
       final data = res.data;
       final latestVersion = data['version'] as String;
 
-      final isWindows = Platform.isWindows;
+      final isWindows = defaultTargetPlatform == TargetPlatform.windows;
       final downloadUrl = (isWindows
               ? data['downloadUrlWindows']
               : data['downloadUrl']) as String? ??
