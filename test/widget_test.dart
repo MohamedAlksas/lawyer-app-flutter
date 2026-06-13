@@ -9,5 +9,8 @@ void main() {
 
     // Verify that the app starts (showing a loader or login screen)
     expect(find.byType(LawyerApp), findsOneWidget);
+
+    // Wait for the initialization timers (like the 2s update check) to complete
+    await tester.pump(const Duration(seconds: 3));
   });
 }
