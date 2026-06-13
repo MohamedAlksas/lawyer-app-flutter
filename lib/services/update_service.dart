@@ -1,7 +1,10 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file_plus/open_file_plus.dart';
 import 'api_service.dart';
 
 class UpdateService {
@@ -59,9 +62,9 @@ class UpdateService {
                 FilledButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    _launchUrl(downloadUrl);
+                    _downloadAndInstall(context, downloadUrl, latestVersion);
                   },
-                  child: const Text('Download'),
+                  child: const Text('Update Now'),
                 ),
               ],
             ),
@@ -81,6 +84,26 @@ class UpdateService {
     }
   }
 
+  Future<void> _downloadAndInstall(BuildContext context, String url, String version) async {
+    final dio = Dio();
+    final fileName = url.split('/').last;
+    final tempDir = await getTemporaryDirectory();
+    final savePath = '${tempDir.path}/$fileName';
+
+    if (!context.mounted) return;
+
+    // Show progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _DownloadDialog(
+        url: url,
+        savePath: savePath,
+        version: version,
+      ),
+    );
+  }
+
   int _compareVersions(String a, String b) {
     final partsA = a.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final partsB = b.split('.').map((e) => int.tryParse(e) ?? 0).toList();
@@ -91,11 +114,97 @@ class UpdateService {
     }
     return 0;
   }
+}
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+class _DownloadDialog extends StatefulWidget {
+  final String url;
+  final String savePath;
+  final String version;
+
+  const _DownloadDialog({
+    required this.url,
+    required this.savePath,
+    required this.version,
+  });
+
+  @override
+  State<_DownloadDialog> createState() => _DownloadDialogState();
+}
+
+class _DownloadDialogState extends State<_DownloadDialog> {
+  double _progress = 0;
+  String _status = 'Starting download...';
+  bool _isError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startDownload();
+  }
+
+  Future<void> _startDownload() async {
+    try {
+      await Dio().download(
+        widget.url,
+        widget.savePath,
+        onReceiveProgress: (count, total) {
+          if (total != -1) {
+            setState(() {
+              _progress = count / total;
+              _status = 'Downloading update: ${(_progress * 100).toStringAsFixed(0)}%';
+            });
+          }
+        },
+      );
+
+      setState(() {
+        _status = 'Download complete. Launching installer...';
+        _progress = 1.0;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final result = await OpenFile.open(widget.savePath);
+      
+      if (mounted) {
+        if (result.type != ResultType.done) {
+          setState(() {
+            _isError = true;
+            _status = 'Could not launch installer: ${result.message}\nPlease try downloading manually.';
+          });
+        } else {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isError = true;
+          _status = 'Download failed: $e';
+        });
+      }
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_isError ? 'Update Failed' : 'Updating to ${widget.version}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!_isError) LinearProgressIndicator(value: _progress),
+          const SizedBox(height: 16),
+          Text(_status),
+        ],
+      ),
+      actions: [
+        if (_isError)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+      ],
+    );
   }
 }
