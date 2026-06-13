@@ -373,7 +373,7 @@ class _UploadDocDialog extends StatefulWidget {
 }
 
 class _UploadDocDialogState extends State<_UploadDocDialog> {
-  PlatformFile? _selectedFile;
+  fp.PlatformFile? _selectedFile;
   String _category = 'OTHER';
   bool _uploading = false;
 
@@ -476,4 +476,5 @@ class _ActionsTab extends StatelessWidget {
       },
     );
   }
+}
 }
