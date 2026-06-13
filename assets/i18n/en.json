@@ -120,5 +120,6 @@
     "search":  "Search",
     "activate":  "Activate",
     "other":  "Other",
-    "upload":  "Upload"
+    "upload":  "Upload",
+    "checkUpdates": "Check for Updates"
 }

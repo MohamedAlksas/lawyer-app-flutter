@@ -161,6 +161,7 @@ class S {
   String get deactivate => t('deactivate');
   String get activate => t('activate');
   String get upload => t('upload');
+  String get checkUpdates => t('checkUpdates');
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {
