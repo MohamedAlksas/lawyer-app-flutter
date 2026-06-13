@@ -83,7 +83,7 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
     }
 
     return MaterialApp.router(
-      title: 'Law Office',
+      title: 'Law Office v2',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       locale: locale,
