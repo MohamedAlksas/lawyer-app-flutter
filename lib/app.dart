@@ -33,9 +33,11 @@ class _LawyerAppState extends ConsumerState<LawyerApp> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(authProvider.notifier).init());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdateService().checkForUpdate(context);
+    Future.microtask(() {
+      ref.read(authProvider.notifier).init();
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) UpdateService().checkForUpdate(context);
+      });
     });
     NotificationService().listenToMessages(
       onMessage: (title, body, data) {

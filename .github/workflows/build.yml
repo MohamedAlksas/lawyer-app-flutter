@@ -40,15 +40,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+      - name: Update pubspec version
+        run: |
+          sed -i "s/^version: .*/version: ${{ needs.version.outputs.version }}+${{ needs.version.outputs.build }}/" pubspec.yaml
       - run: flutter pub get
       - run: >
-          flutter build apk --debug
+          flutter build apk --release
           --build-name=${{ needs.version.outputs.version }}
           --build-number=${{ needs.version.outputs.build }}
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
   build-windows:
     name: Build Windows (MSIX)
@@ -57,6 +60,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
+      - name: Update pubspec version
+        run: |
+          (Get-Content pubspec.yaml) -replace '^version: .*', 'version: ${{ needs.version.outputs.version }}+${{ needs.version.outputs.build }}' | Set-Content pubspec.yaml
       - run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
