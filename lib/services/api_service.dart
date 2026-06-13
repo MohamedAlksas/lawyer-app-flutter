@@ -104,10 +104,16 @@ class ApiService {
     required String docCategory,
     required String name,
   }) async {
-    // Note: This needs web-specific implementation for file picking
-    // For now, we avoid dart:io 'File' type
+    MultipartFile multipartFile;
+    if (file is List<int>) {
+      multipartFile = MultipartFile.fromBytes(file, filename: name);
+    } else {
+      // Fallback for mobile if needed, though we prefer bytes for universal support
+      multipartFile = await MultipartFile.fromFile(file.path, filename: name);
+    }
+
     final form = FormData.fromMap({
-      'file': file,
+      'file': multipartFile,
       'caseId': caseId,
       'docCategory': docCategory,
       'name': name,
