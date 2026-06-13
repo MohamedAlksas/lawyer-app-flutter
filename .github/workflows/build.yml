@@ -117,7 +117,7 @@ jobs:
       - name: Upload Release Assets
         run: |
           gh release upload ${{ needs.version.outputs.tag }} \
-            app-debug-apk/app-debug.apk \
+            app-release-apk/app-release.apk \
             app-release-msix/*.msix \
             --clobber
         env:
@@ -135,7 +135,7 @@ jobs:
           BUILD="${{ needs.version.outputs.build }}"
           TAG="${{ needs.version.outputs.tag }}"
           REPO="MohamedAlksas/lawyer-app-flutter"
-          APK_URL="https://github.com/$REPO/releases/download/$TAG/app-debug.apk"
+          APK_URL="https://github.com/$REPO/releases/download/$TAG/app-release.apk"
           MSIX_FILE=$(ls app-release-msix/*.msix | head -n 1 | xargs basename)
           WIN_URL="https://github.com/$REPO/releases/download/$TAG/$MSIX_FILE"
 
