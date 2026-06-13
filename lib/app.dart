@@ -22,6 +22,7 @@ import 'widgets/offline_banner.dart';
 import 'widgets/forms/case_form.dart';
 import 'theme/app_theme.dart';
 
+// Version Trigger: 2026-06-13-21-45
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
 
