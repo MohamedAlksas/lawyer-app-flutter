@@ -9,6 +9,7 @@ class ApiService {
 
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  void Function()? onUnauthorized;
 
   static const String _accessTokenKey = 'accessToken';
   static const String _refreshTokenKey = 'refreshToken';
@@ -45,6 +46,8 @@ class ApiService {
               handler.next(error);
               return;
             }
+          } else {
+            onUnauthorized?.call();
           }
         }
         handler.next(error);
@@ -108,7 +111,6 @@ class ApiService {
     if (file is List<int>) {
       multipartFile = MultipartFile.fromBytes(file, filename: name);
     } else {
-      // Fallback for mobile if needed, though we prefer bytes for universal support
       multipartFile = await MultipartFile.fromFile(file.path, filename: name);
     }
 

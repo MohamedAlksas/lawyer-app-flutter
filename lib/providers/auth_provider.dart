@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import 'api_provider.dart';
 
 class AuthState {
   final User? user;
@@ -29,9 +31,12 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  final ApiService _api;
   String? _fcmToken;
 
-  AuthNotifier(this._authService) : super(const AuthState());
+  AuthNotifier(this._authService, this._api) : super(const AuthState()) {
+    _api.onUnauthorized = logout;
+  }
 
   Future<void> init() async {
     final loggedIn = await _authService.isLoggedIn();
@@ -83,5 +88,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final service = AuthService();
-  return AuthNotifier(service);
+  final api = ref.read(apiServiceProvider);
+  return AuthNotifier(service, api);
 });

@@ -5,96 +5,86 @@ import '../services/cache_service.dart';
 import 'api_provider.dart';
 
 class ClientsState {
-  final List<Client> clients;
+  final List<Client> items;
   final bool isLoading;
   final String? error;
-  final int totalCount;
-  final String searchQuery;
+  final int total;
 
   const ClientsState({
-    this.clients = const [],
+    this.items = const [],
     this.isLoading = false,
     this.error,
-    this.totalCount = 0,
-    this.searchQuery = '',
+    this.total = 0,
   });
 
   ClientsState copyWith({
-    List<Client>? clients,
+    List<Client>? items,
     bool? isLoading,
     String? error,
-    int? totalCount,
-    String? searchQuery,
+    int? total,
   }) =>
       ClientsState(
-        clients: clients ?? this.clients,
+        items: items ?? this.items,
         isLoading: isLoading ?? this.isLoading,
         error: error,
-        totalCount: totalCount ?? this.totalCount,
-        searchQuery: searchQuery ?? this.searchQuery,
+        total: total ?? this.total,
       );
 }
 
 class ClientsNotifier extends StateNotifier<ClientsState> {
   final ApiService _api;
-  final CacheService _cache = CacheService();
   int _page = 1;
-  static const int _limit = 20;
+  String _query = '';
 
-  ClientsNotifier(this._api) : super(const ClientsState());
+  ClientsNotifier(this._api) : super(const ClientsState()) {
+    load();
+  }
 
-  Future<void> load({String? query, bool refresh = false}) async {
+  Future<void> load({bool refresh = false}) async {
     if (refresh) {
       _page = 1;
-      state = state.copyWith(isLoading: true, error: null);
+      state = state.copyWith(isLoading: true);
+    } else if (state.items.length >= state.total && state.total > 0) {
+      return;
     }
-    final params = <String, dynamic>{'page': _page, 'limit': _limit};
-    final sq = query ?? state.searchQuery;
-    if (sq.isNotEmpty) params['search'] = sq;
-    final cacheKey = _cache.cacheKey('/clients', params);
+
     try {
-      if (await _cache.isOnline) {
-        final res = await _api.get('/clients', query: params);
-        final items = (res.data['data'] as List).map((e) => Client.fromMap(e)).toList();
-        await _cache.cache(cacheKey, {'data': res.data['data'], 'total': res.data['total'] ?? items.length});
-        state = state.copyWith(
-          clients: refresh ? items : [...state.clients, ...items],
-          totalCount: res.data['total'] ?? items.length,
-          isLoading: false,
-          searchQuery: sq,
-        );
-      } else {
-        final cached = await _cache.getCached(cacheKey);
+      final cacheKey = CacheService().cacheKey('/clients', {'page': _page, 'search': _query});
+      if (refresh) {
+        final cached = await CacheService().getCached(cacheKey);
         if (cached != null) {
-          final items = (cached['data'] as List).map((e) => Client.fromMap(e)).toList();
-          state = state.copyWith(
-            clients: refresh ? items : [...state.clients, ...items],
-            totalCount: cached['total'] ?? items.length,
-            isLoading: false,
-            searchQuery: sq,
-          );
+          final items = (cached['items'] as List).map((e) => Client.fromMap(e)).toList();
+          state = state.copyWith(items: items, total: cached['total']);
         }
       }
+
+      final res = await _api.get('/clients', query: {
+        'page': _page,
+        'search': _query,
+      });
+
+      await CacheService().cache(cacheKey, res.data);
+
+      final newItems = (res.data['items'] as List).map((e) => Client.fromMap(e)).toList();
+
+      state = state.copyWith(
+        isLoading: false,
+        items: refresh ? newItems : _deduplicate([...state.items, ...newItems]),
+        total: res.data['total'],
+      );
     } catch (e) {
-      final cached = await _cache.getCached(cacheKey);
-      if (cached != null) {
-        final items = (cached['data'] as List).map((e) => Client.fromMap(e)).toList();
-        state = state.copyWith(
-          clients: refresh ? items : [...state.clients, ...items],
-          totalCount: cached['total'] ?? items.length,
-          isLoading: false,
-          searchQuery: sq,
-          error: 'بيانات مخزنة محلياً (غير متصل)',
-        );
-      } else {
-        state = state.copyWith(isLoading: false, error: e.toString());
-      }
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  Future<void> search(String query) async {
-    state = state.copyWith(searchQuery: query);
-    await load(query: query, refresh: true);
+  List<Client> _deduplicate(List<Client> items) {
+    final ids = <String>{};
+    return items.where((i) => ids.add(i.id)).toList();
+  }
+
+  Future<void> search(String query) {
+    _query = query;
+    return load(refresh: true);
   }
 
   Future<void> refresh() => load(refresh: true);

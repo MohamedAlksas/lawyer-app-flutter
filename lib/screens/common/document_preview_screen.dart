@@ -31,6 +31,7 @@ class DocumentPreviewScreen extends StatelessWidget {
             : InteractiveViewer(
                 child: Image.network(
                   url,
+                  cacheWidth: 2000, // Reasonable limit for zooming
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(child: CircularProgressIndicator());

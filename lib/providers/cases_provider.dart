@@ -5,113 +5,105 @@ import '../services/cache_service.dart';
 import 'api_provider.dart';
 
 class CasesState {
-  final List<Case> cases;
+  final List<Case> items;
   final bool isLoading;
   final String? error;
-  final int totalCount;
-  final String searchQuery;
-  final String? statusFilter;
+  final int total;
 
   const CasesState({
-    this.cases = const [],
+    this.items = const [],
     this.isLoading = false,
     this.error,
-    this.totalCount = 0,
-    this.searchQuery = '',
-    this.statusFilter,
+    this.total = 0,
   });
 
   CasesState copyWith({
-    List<Case>? cases,
+    List<Case>? items,
     bool? isLoading,
     String? error,
-    int? totalCount,
-    String? searchQuery,
-    String? statusFilter,
+    int? total,
   }) =>
       CasesState(
-        cases: cases ?? this.cases,
+        items: items ?? this.items,
         isLoading: isLoading ?? this.isLoading,
         error: error,
-        totalCount: totalCount ?? this.totalCount,
-        searchQuery: searchQuery ?? this.searchQuery,
-        statusFilter: statusFilter ?? this.statusFilter,
+        total: total ?? this.total,
       );
 }
 
 class CasesNotifier extends StateNotifier<CasesState> {
   final ApiService _api;
-  final CacheService _cache = CacheService();
   int _page = 1;
-  static const int _limit = 20;
+  String _query = '';
+  String? _status;
 
-  CasesNotifier(this._api) : super(const CasesState());
+  CasesNotifier(this._api) : super(const CasesState()) {
+    load();
+  }
 
-  Future<void> load({String? query, String? status, bool refresh = false}) async {
+  Future<void> load({bool refresh = false}) async {
     if (refresh) {
       _page = 1;
-      state = state.copyWith(isLoading: true, error: null);
+      state = state.copyWith(isLoading: true);
+    } else if (state.items.length >= state.total && state.total > 0) {
+      return;
     }
-    final params = <String, dynamic>{'page': _page, 'limit': _limit};
-    final sq = query ?? state.searchQuery;
-    final sf = status ?? state.statusFilter;
-    if (sq.isNotEmpty) params['search'] = sq;
-    if (sf != null && sf != 'ALL') params['status'] = sf;
-    final cacheKey = _cache.cacheKey('/cases', params);
+
     try {
-      if (await _cache.isOnline) {
-        final res = await _api.get('/cases', query: params);
-        final items = (res.data['data'] as List).map((e) => Case.fromMap(e)).toList();
-        await _cache.cache(cacheKey, {'data': res.data['data'], 'total': res.data['total'] ?? items.length});
-        state = state.copyWith(
-          cases: refresh ? items : [...state.cases, ...items],
-          totalCount: res.data['total'] ?? items.length,
-          isLoading: false,
-          searchQuery: sq,
-          statusFilter: sf,
-        );
-      } else {
-        final cached = await _cache.getCached(cacheKey);
+      final cacheKey = CacheService().cacheKey('/cases', {
+        'page': _page,
+        'search': _query,
+        'status': _status,
+      });
+
+      if (refresh) {
+        final cached = await CacheService().getCached(cacheKey);
         if (cached != null) {
-          final items = (cached['data'] as List).map((e) => Case.fromMap(e)).toList();
-          state = state.copyWith(
-            cases: refresh ? items : [...state.cases, ...items],
-            totalCount: cached['total'] ?? items.length,
-            isLoading: false,
-            searchQuery: sq,
-            statusFilter: sf,
-          );
+          final items = (cached['items'] as List).map((e) => Case.fromMap(e)).toList();
+          state = state.copyWith(items: items, total: cached['total']);
         }
       }
+
+      final res = await _api.get('/cases', query: {
+        'page': _page,
+        'search': _query,
+        'status': _status,
+      });
+
+      await CacheService().cache(cacheKey, res.data);
+
+      final newItems = (res.data['items'] as List).map((e) => Case.fromMap(e)).toList();
+
+      state = state.copyWith(
+        isLoading: false,
+        items: refresh ? newItems : _deduplicate([...state.items, ...newItems]),
+        total: res.data['total'],
+      );
     } catch (e) {
-      final cached = await _cache.getCached(cacheKey);
-      if (cached != null) {
-        final items = (cached['data'] as List).map((e) => Case.fromMap(e)).toList();
-        state = state.copyWith(
-          cases: refresh ? items : [...state.cases, ...items],
-          totalCount: cached['total'] ?? items.length,
-          isLoading: false,
-          searchQuery: sq,
-          statusFilter: sf,
-          error: 'بيانات مخزنة محلياً (غير متصل)',
-        );
-      } else {
-        state = state.copyWith(isLoading: false, error: e.toString());
-      }
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
-  Future<void> search(String query) async {
-    state = state.copyWith(searchQuery: query);
-    await load(query: query, refresh: true);
+  List<Case> _deduplicate(List<Case> items) {
+    final ids = <String>{};
+    return items.where((i) => ids.add(i.id)).toList();
   }
 
-  Future<void> filterByStatus(String? status) async {
-    state = state.copyWith(statusFilter: status);
-    await load(status: status, refresh: true);
+  Future<void> search(String query) {
+    _query = query;
+    return load(refresh: true);
+  }
+
+  Future<void> filterByStatus(String? status) {
+    _status = status;
+    return load(refresh: true);
   }
 
   Future<void> refresh() => load(refresh: true);
+  Future<void> loadMore() {
+    _page++;
+    return load();
+  }
 }
 
 final casesProvider = StateNotifierProvider<CasesNotifier, CasesState>((ref) {
