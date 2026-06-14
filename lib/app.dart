@@ -24,6 +24,7 @@ import 'theme/app_theme.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
+// CI Trigger: Reverted to Stable Material UI
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
 
