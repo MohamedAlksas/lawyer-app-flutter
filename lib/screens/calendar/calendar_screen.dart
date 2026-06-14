@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -41,83 +42,86 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(s.calendar, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text('Court Schedule', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 8),
 
-        // Styled Table Calendar Wrapper
-        GlassCard(
-          padding: const EdgeInsets.all(8),
-          child: TableCalendar(
-            firstDay: DateTime(2020),
-            lastDay: DateTime(2030),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
-            calendarFormat: _format,
-            locale: Localizations.localeOf(context).languageCode,
-            onFormatChanged: (f) => setState(() => _format = f),
-            onPageChanged: (d) {
-              _focusedDay = d;
-              _loadMonth(d.year, d.month);
-            },
-            onDaySelected: (selected, focused) {
-              setState(() {
-                _selectedDay = selected;
-                _focusedDay = focused;
-              });
-            },
-            eventLoader: (d) => sessionDays.contains(d) ? [1] : [],
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-              ),
-              selectedTextStyle: const TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.bold),
-              todayTextStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-              defaultTextStyle: const TextStyle(color: AppColors.onSurface),
-              weekendTextStyle: const TextStyle(color: AppColors.onSurfaceDim),
-              outsideDaysVisible: false,
-            ),
-            headerStyle: const HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-              titleTextStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16),
-              leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.primary),
-              rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.primary),
-            ),
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, date, events) {
-                if (events.isNotEmpty) {
-                  return Positioned(
-                    bottom: 4,
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.primary),
-                    ),
-                  );
-                }
-                return null;
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: GlassCard(
+            padding: const EdgeInsets.all(12),
+            child: TableCalendar(
+              firstDay: DateTime(2020),
+              lastDay: DateTime(2030),
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (d) => isSameDay(_selectedDay, d),
+              calendarFormat: _format,
+              locale: Localizations.localeOf(context).languageCode,
+              onFormatChanged: (f) => setState(() => _format = f),
+              onPageChanged: (d) {
+                _focusedDay = d;
+                _loadMonth(d.year, d.month);
               },
+              onDaySelected: (selected, focused) {
+                setState(() {
+                  _selectedDay = selected;
+                  _focusedDay = focused;
+                });
+              },
+              eventLoader: (d) => sessionDays.contains(d) ? [1] : [],
+              calendarStyle: CalendarStyle(
+                todayDecoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                selectedDecoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                markerDecoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                selectedTextStyle: const TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.bold),
+                todayTextStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                weekendTextStyle: const TextStyle(color: AppColors.onSurfaceDim),
+                outsideDaysVisible: false,
+              ),
+              headerStyle: const HeaderStyle(
+                formatButtonVisible: false,
+                titleCentered: true,
+                titleTextStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+                leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.primary),
+                rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.primary),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        const Divider(),
-        const SizedBox(height: 16),
+        
         Expanded(
           child: state.isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: 3,
+                  itemBuilder: (_, __) => const ShimmerLoader(width: double.infinity, height: 80, borderRadius: 16),
+                )
               : _selectedDay == null
                   ? Center(
-                      child: Text(
-                        Directionality.of(context) == TextDirection.rtl
-                            ? 'الرجاء اختيار يوم لعرض الجلسات'
-                            : 'Please select a day to view sessions',
-                        style: const TextStyle(color: AppColors.onSurfaceDim),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.touch_app_outlined, size: 48, color: AppColors.border),
+                          const SizedBox(height: 16),
+                          Text(
+                            Directionality.of(context) == TextDirection.rtl
+                                ? 'الرجاء اختيار يوم لعرض الجلسات'
+                                : 'Select a date to inspect sessions',
+                            style: const TextStyle(color: AppColors.onSurfaceDim),
+                          ),
+                        ],
                       ),
                     )
                   : Builder(
@@ -135,34 +139,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         }
 
                         return ListView.separated(
+                          padding: const EdgeInsets.all(16),
                           physics: const BouncingScrollPhysics(),
                           itemCount: daySessions.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (_, i) {
                             final ssn = daySessions[i];
                             return GlassCard(
-                              accentColor: AppColors.primary,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.event, color: AppColors.primary),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          ssn.sessionDate.toString().split('.')[0],
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${s.result}: ${ssn.result ?? '-'}',
-                                          style: const TextStyle(color: AppColors.onSurfaceDim),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              padding: EdgeInsets.zero,
+                              child: ListTile(
+                                leading: const Icon(Icons.gavel_outlined, color: AppColors.primary),
+                                title: Text(ssn.sessionDate.toString().split(' ')[0], style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('${s.result}: ${ssn.result ?? '-'}'),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.border),
                               ),
                             );
                           },

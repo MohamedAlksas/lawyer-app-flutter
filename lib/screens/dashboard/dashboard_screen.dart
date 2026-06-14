@@ -4,6 +4,7 @@ import 'package:lawyer_app_flutter/i18n/messages.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shimmer_loader.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -27,92 +28,166 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Greeting Header with Avatar Row
+          // Header Area
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                child: const Icon(Icons.person, color: AppColors.primary, size: 28),
-              ),
-              const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user != null ? '${s.login} ${user.fullName}' : s.dashboard,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    'Executive Insights',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontFamily: 'Cairo'),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    user?.isAdmin == true ? 'مدير النظام' : 'محامي المكتب',
+                    'Daily briefing and strategic overview.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.onSurfaceDim),
                   ),
                 ],
               ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: const Icon(Icons.account_circle_outlined, color: AppColors.primary),
+              ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
 
-          // Stats Row
           statsAsync.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            loading: () => const _DashboardSkeleton(),
             error: (e, _) => Center(child: Text('$e')),
             data: (stats) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
+                // Glassmorphic Stat Tiles
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 1.1,
                   children: [
-                    _StatCard(
-                      icon: Icons.gavel_rounded,
-                      label: s.activeCases,
+                    _LuxuryStatCard(
+                      icon: Icons.account_balance_outlined,
+                      label: 'Dockets',
                       value: '${stats.activeCases}',
-                      color: AppColors.secondary,
+                      trend: '+5%',
+                      color: AppColors.primary,
                     ),
-                    _StatCard(
-                      icon: Icons.event_note_rounded,
-                      label: s.todaySessions,
+                    _LuxuryStatCard(
+                      icon: Icons.event_note_outlined,
+                      label: 'Today',
                       value: '${stats.todaySessions}',
+                      trend: 'Priority',
                       color: AppColors.warning,
-                    ),
-                    _StatCard(
-                      icon: Icons.warning_amber_rounded,
-                      label: s.upcomingDeadlines,
-                      value: '${stats.upcomingDeadlines}',
-                      color: AppColors.error,
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 32),
-
-                // Additional dashboard widgets (e.g. recent activity)
-                Text(
-                  'أحدث التنبيهات والنشاطات',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                // Active Case Load Gauge
+                GlassCard(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Active Case Load', style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 4),
+                          const Text('Optimal capacity', style: TextStyle(color: AppColors.onSurfaceDim, fontSize: 12)),
+                        ],
+                      ),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 64,
+                            height: 64,
+                            child: CircularProgressIndicator(
+                              value: (stats.activeCases / 50).clamp(0.0, 1.0),
+                              strokeWidth: 6,
+                              backgroundColor: AppColors.border,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            '${((stats.activeCases / 50) * 100).toInt()}%',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
 
-                GlassCard(
-                  accentColor: AppColors.primary,
-                  child: Row(
+                // Imminent Session Widget
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.glassBackground,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.05),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline, color: AppColors.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'تنبيه: راجع التقويم اليوم للتأكد من مواعيد الجلسات والحدود الزمنية لتقديم المذكرات القانونية.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                      const Row(
+                        children: [
+                          Icon(Icons.flash_on, color: AppColors.primary, size: 16),
+                          SizedBox(width: 8),
+                          Text('IMMINENT', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Estate Settlement', style: Theme.of(context).textTheme.titleLarge),
+                                const SizedBox(height: 4),
+                                const Text('Conference Room A • Partner Review', style: TextStyle(color: AppColors.onSurfaceDim, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('14:00', style: TextStyle(color: AppColors.primary, fontSize: 24, fontWeight: FontWeight.bold)),
+                              Text('Today', style: TextStyle(color: AppColors.onSurfaceDim, fontSize: 12)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () {},
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onPrimary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Review Brief', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -127,52 +202,64 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _LuxuryStatCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final String trend;
   final Color color;
 
-  const _StatCard({
+  const _LuxuryStatCard({
     required this.icon,
     required this.label,
     required this.value,
+    required this.trend,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      width: 180,
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Colored icon circle wrapper
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: AppColors.onSurfaceDim, size: 20),
+              Text(trend, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
+          const Spacer(),
+          Text(label.toUpperCase(), style: const TextStyle(color: AppColors.onSurfaceDim, fontSize: 10, letterSpacing: 1.1)),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-          ),
+          Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: AppColors.onSurface, fontWeight: FontWeight.bold)),
         ],
       ),
+    );
+  }
+}
+
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: ShimmerLoader(width: double.infinity, height: 140, borderRadius: 16)),
+            const SizedBox(width: 16),
+            Expanded(child: ShimmerLoader(width: double.infinity, height: 140, borderRadius: 16)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const ShimmerLoader(width: double.infinity, height: 100, borderRadius: 16),
+        const SizedBox(height: 16),
+        const ShimmerLoader(width: double.infinity, height: 200, borderRadius: 16),
+      ],
     );
   }
 }

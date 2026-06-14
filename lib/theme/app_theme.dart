@@ -18,9 +18,10 @@ class AppColors {
 
   static const Color onSurface = Color(0xFFE6EDF3);
   static const Color onSurfaceDim = Color(0xFF8B949E);
-  static const Color border = Color(0x14FFFFFF); // 8% White border
+  static const Color border = Color(0x1AFFFFFF); // 10% White border
 
   static const Color glassBackground = Color(0xD9161B22); // 85% opacity surface
+  static const double glassBlur = 20.0;
 
   static const LinearGradient goldGradient = LinearGradient(
     colors: [primary, primaryDark],
@@ -140,7 +141,7 @@ class GlassCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: AppColors.glassBlur, sigmaY: AppColors.glassBlur),
         child: Container(
           width: width,
           height: height,

@@ -24,6 +24,7 @@ import 'theme/app_theme.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
+// Version Trigger: 2026-06-13-21-45
 class LawyerApp extends ConsumerStatefulWidget {
   const LawyerApp({super.key});
 
@@ -180,22 +181,20 @@ class _AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final locale = ref.watch(localeProvider);
-    final isRtl = locale.languageCode == 'ar';
     final s = S.of(context);
     final user = ref.watch(authProvider).user;
     final isMobile = ResponsiveLayout.isMobile(context);
     final location = GoRouterState.of(context).matchedLocation;
 
     final navItems = [
-      _NavItem(Icons.dashboard, s.dashboard, '/dashboard'),
-      _NavItem(Icons.people, s.clients, '/clients'),
-      _NavItem(Icons.gavel, s.cases, '/cases'),
-      _NavItem(Icons.calendar_month, s.calendar, '/calendar'),
-      _NavItem(Icons.notifications, s.notifications, '/notifications'),
-      _NavItem(Icons.settings, s.settings, '/settings'),
+      _NavItem(Icons.insights_outlined, 'Executive', '/dashboard'),
+      _NavItem(Icons.people_outline, s.clients, '/clients'),
+      _NavItem(Icons.gavel_outlined, s.cases, '/cases'),
+      _NavItem(Icons.calendar_today_outlined, s.calendar, '/calendar'),
+      _NavItem(Icons.notifications_outlined, s.notifications, '/notifications'),
+      _NavItem(Icons.settings_outlined, s.settings, '/settings'),
       if (user?.isAdmin == true)
-        _NavItem(Icons.manage_accounts, s.users, '/users'),
+        _NavItem(Icons.admin_panel_settings_outlined, s.users, '/users'),
     ];
 
     final selectedIndex = navItems.indexWhere((n) => location.startsWith(n.path));
@@ -203,38 +202,55 @@ class _AppShell extends ConsumerWidget {
     final shell = isMobile
         ? Scaffold(
             body: child,
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-              onDestinationSelected: (i) => context.go(navItems[i].path),
-              destinations: navItems.map((n) => NavigationDestination(
-                icon: Icon(n.icon),
-                label: n.label,
-              )).toList(),
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+              ),
+              child: NavigationBar(
+                backgroundColor: AppColors.glassBackground,
+                elevation: 0,
+                selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
+                onDestinationSelected: (i) => context.go(navItems[i].path),
+                destinations: navItems.map((n) => NavigationDestination(
+                  icon: Icon(n.icon),
+                  label: n.label,
+                )).toList(),
+              ),
             ),
           )
         : Scaffold(
             body: Row(
               children: [
                 NavigationRail(
+                  backgroundColor: AppColors.surface,
+                  elevation: 0,
                   selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
                   onDestinationSelected: (i) => context.go(navItems[i].path),
                   labelType: NavigationRailLabelType.all,
                   leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Icon(Icons.balance, size: 36, color: Theme.of(context).colorScheme.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Icon(Icons.balance, size: 40, color: AppColors.primary),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.logout),
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
+                  trailing: Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: IconButton(
+                          icon: const Icon(Icons.logout_outlined, color: AppColors.error),
+                          onPressed: () => ref.read(authProvider.notifier).logout(),
+                        ),
+                      ),
+                    ),
                   ),
                   destinations: navItems.map((n) => NavigationRailDestination(
                     icon: Icon(n.icon),
-                    label: Text(n.label),
+                    label: Text(n.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   )).toList(),
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(0),
                   child: child,
                 )),
               ],
@@ -242,7 +258,7 @@ class _AppShell extends ConsumerWidget {
           );
 
     return Directionality(
-      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+      textDirection: ref.watch(localeProvider).languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
       child: OfflineBanner(child: shell),
     );
   }

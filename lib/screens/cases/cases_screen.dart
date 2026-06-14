@@ -39,69 +39,62 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: Text(s.cases, style: Theme.of(context).textTheme.headlineSmall)),
-            Container(
-              decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
-                borderRadius: BorderRadius.circular(12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Litigation Explorer', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('${state.total} active case files', style: const TextStyle(color: AppColors.onSurfaceDim, fontSize: 13)),
+                ],
               ),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  foregroundColor: AppColors.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+              IconButton.filled(
+                style: IconButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.onPrimary),
                 icon: const Icon(Icons.add),
-                label: Text(s.add, style: const TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () => context.go('/cases/add'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _searchCtrl,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
-            hintText: s.search,
-            suffixIcon: _searchCtrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      ref.read(casesProvider.notifier).search('');
-                    })
-                : null,
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 20),
+              hintText: s.search,
+              suffixIcon: _searchCtrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        ref.read(casesProvider.notifier).search('');
+                      })
+                  : null,
+            ),
+            onChanged: (v) => ref.read(casesProvider.notifier).search(v),
           ),
-          onChanged: (v) => ref.read(casesProvider.notifier).search(v),
         ),
-        const SizedBox(height: 12),
-        // Filter Chips Row
         SizedBox(
-          height: 38,
+          height: 44,
           child: ListView(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
             children: _statuses.map((st) {
               final active = (_statusFilter ?? 'ALL') == st;
               return Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: ChoiceChip(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
                   label: Text(
-                    st == 'ALL'
-                        ? 'الكل'
-                        : st == 'ACTIVE'
-                            ? s.active
-                            : st == 'CLOSED'
-                                ? s.closed
-                                : s.suspended,
+                    st == 'ALL' ? 'الكل' : st,
                     style: TextStyle(
                       fontFamily: 'Cairo',
+                      fontSize: 12,
                       color: active ? AppColors.onPrimary : AppColors.onSurface,
                       fontWeight: active ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -109,10 +102,6 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
                   selected: active,
                   selectedColor: AppColors.primary,
                   backgroundColor: AppColors.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: active ? AppColors.primary : AppColors.border),
-                  ),
                   showCheckmark: false,
                   onSelected: (_) {
                     final newStatus = st == 'ALL' ? null : st;
@@ -129,54 +118,49 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
           child: state.isLoading && state.items.isEmpty
               ? ListView.builder(
                   itemCount: 6,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemBuilder: (_, __) => const CaseCardSkeleton(),
                 )
               : state.items.isEmpty
                   ? Center(child: Text(s.noData))
-                  : ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: state.items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) {
-                        final c = state.items[i];
-
-                        Color accentColor;
-                        switch (c.status) {
-                          case 'ACTIVE':
-                            accentColor = AppColors.success;
-                            break;
-                          case 'CLOSED':
-                            accentColor = AppColors.onSurfaceDim;
-                            break;
-                          case 'SUSPENDED':
-                            accentColor = AppColors.warning;
-                            break;
-                          default:
-                            accentColor = AppColors.primary;
-                        }
-
-                        return GlassCard(
-                          accentColor: accentColor,
-                          padding: EdgeInsets.zero,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            title: Text(
-                              '${s.caseNumber}: ${c.caseNumber} / ${c.caseYear}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                '${c.courtName} | ${c.caseType}',
-                                style: const TextStyle(color: AppColors.onSurfaceDim, fontSize: 13),
+                  : RefreshIndicator(
+                      onRefresh: () => ref.read(casesProvider.notifier).refresh(),
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                        itemCount: state.items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) {
+                          final c = state.items[i];
+                          return GlassCard(
+                            padding: EdgeInsets.zero,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              title: Text(
+                                '${c.caseNumber} / ${c.caseYear}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  c.courtName,
+                                  style: const TextStyle(color: AppColors.onSurfaceDim, fontSize: 13),
+                                ),
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  _SimpleStatusBadge(c.status),
+                                  const SizedBox(height: 4),
+                                  Text(c.caseType, style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceDim)),
+                                ],
+                              ),
+                              onTap: () => context.go('/cases/${c.id}'),
                             ),
-                            trailing: _StatusBadge(c.status),
-                            onTap: () => context.go('/cases/${c.id}'),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
         ),
       ],
@@ -184,42 +168,26 @@ class _CasesScreenState extends ConsumerState<CasesScreen> {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
+class _SimpleStatusBadge extends StatelessWidget {
   final String status;
-  const _StatusBadge(this.status);
+  const _SimpleStatusBadge(this.status);
 
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context);
-    Color color;
-    String label;
-    switch (status) {
-      case 'ACTIVE':
-        color = AppColors.success;
-        label = s.active;
-        break;
-      case 'CLOSED':
-        color = AppColors.onSurfaceDim;
-        label = s.closed;
-        break;
-      case 'SUSPENDED':
-        color = AppColors.warning;
-        label = s.suspended;
-        break;
-      default:
-        color = AppColors.secondary;
-        label = status;
-    }
+    Color color = AppColors.primary;
+    if (status == 'ACTIVE') color = AppColors.success;
+    if (status == 'CLOSED') color = AppColors.onSurfaceDim;
+    if (status == 'SUSPENDED') color = AppColors.warning;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.24)),
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        label,
-        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold, fontFamily: 'Cairo'),
+        status,
+        style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold, letterSpacing: 1),
       ),
     );
   }
